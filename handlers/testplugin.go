@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"golang.org/x/exp/rand"
 )
 

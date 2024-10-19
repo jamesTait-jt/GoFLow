@@ -3,7 +3,7 @@ package broker
 import (
 	"context"
 
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 )
 
 // ChannelBroker is a task broker implementation that wraps a buffered Go channel.

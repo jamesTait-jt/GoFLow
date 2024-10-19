@@ -7,7 +7,7 @@ import (
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
 	"golang.org/x/exp/rand"
 )

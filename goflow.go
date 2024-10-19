@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
 )
 

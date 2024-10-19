@@ -8,7 +8,7 @@ import (
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/plugin"
 	"github.com/jamesTait-jt/goflow/pkg/store"
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
 	"github.com/redis/go-redis/v9"
 )

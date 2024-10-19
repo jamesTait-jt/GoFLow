@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
 )
 

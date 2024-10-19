@@ -3,7 +3,7 @@ package goflow
 import (
 	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 )
 
 type Option interface {

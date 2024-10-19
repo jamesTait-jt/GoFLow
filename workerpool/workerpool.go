@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/jamesTait-jt/goflow/pkg/task"
+	"github.com/jamesTait-jt/goflow/task"
 	"github.com/sirupsen/logrus"
 )
 
