@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/plugin"
-	"github.com/jamesTait-jt/goflow/pkg/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/pkg/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
