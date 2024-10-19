@@ -10,16 +10,14 @@ RUN apt-get update \
     build-essential \
     libsqlite3-dev
 
-# Copy Go module files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the WorkerPool source code
 COPY cmd/workerpool ./cmd/workerpool
 COPY goflow.go options.go ./
+COPY workerpool ./workerpool
 COPY pkg ./pkg
 
-# Build the WorkerPool binary
 RUN go build -o workerpool ./cmd/workerpool
 
 # Stage 2: Run the WorkerPool binary
@@ -27,13 +25,10 @@ FROM debian:bullseye-slim
 WORKDIR /app
 COPY --from=builder /app/workerpool .
 
-# Install dependencies for CGO (like glibc)
 RUN apt-get update \
     && apt-get install -y ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Expose the port for the WorkerPool service
 EXPOSE 8081
 
-# Run the WorkerPool service
 ENTRYPOINT ["./workerpool"]

@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/jamesTait-jt/goflow/pkg/task"
-	"github.com/jamesTait-jt/goflow/pkg/workerpool"
+	"github.com/jamesTait-jt/goflow/workerpool"
 )
 
 // Broker is an interface that abstracts messaging systems used by GoFlow.
