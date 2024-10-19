@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	goflow "github.com/jamesTait-jt/goflow/pkg"
+	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/pkg/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/pkg/task"
@@ -31,7 +31,7 @@ func main() {
 
 	taskHandler := func(payload any) task.Result {
 		rand.Seed(uint64(time.Now().UnixNano()))
-		n := rand.Intn(1000) 
+		n := rand.Intn(1000)
 		fmt.Printf("Sleeping %d milliseconds...\n", n)
 		time.Sleep(time.Millisecond * time.Duration(n))
 

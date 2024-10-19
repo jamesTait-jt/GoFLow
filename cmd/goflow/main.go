@@ -7,8 +7,8 @@ import (
 	"log"
 	"net"
 
+	"github.com/jamesTait-jt/goflow"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
-	goflow "github.com/jamesTait-jt/goflow/pkg"
 	"github.com/jamesTait-jt/goflow/pkg/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/pkg/task"
@@ -92,7 +92,7 @@ func main() {
 	pb.RegisterGoFlowServer(grpcServer, &server{gf: gf})
 
 	log.Printf("server listening at %v", lis.Addr())
-	
+
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

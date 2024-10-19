@@ -16,6 +16,7 @@ RUN go mod download
 
 # Copy the WorkerPool source code
 COPY cmd/workerpool ./cmd/workerpool
+COPY goflow.go options.go ./
 COPY pkg ./pkg
 
 # Build the WorkerPool binary
