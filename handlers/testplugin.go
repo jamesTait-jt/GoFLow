@@ -12,7 +12,7 @@ func handle(payload any) task.Result {
 	fmt.Println("Handling task with payload: ", payload)
 
 	rand.Seed(uint64(time.Now().UnixNano()))
-	n := rand.Intn(1000) // n will be between 0 and 10
+	n := rand.Intn(1000)
 	fmt.Printf("Sleeping %d milliseconds...\n", n)
 	time.Sleep(time.Millisecond * time.Duration(n))
 
