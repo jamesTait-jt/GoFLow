@@ -15,11 +15,21 @@ type redisClient interface {
 	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd
 }
 
+type serialiser[T task.TaskOrResult] interface {
+	Serialise(toSerialise T) ([]byte, error)
+}
+
+type deserialiser[T task.TaskOrResult] interface {
+	Deserialise(toDeserialise []byte) (T, error)
+}
+
 type RedisBroker[T task.TaskOrResult] struct {
 	client        redisClient
 	redisQueueKey string
 	outChan       chan T
 	started       sync.Once
+	serialiser    serialiser[T]
+	deserialiser  deserialiser[T]
 }
 
 func NewRedisBroker[T task.TaskOrResult](
@@ -33,7 +43,7 @@ func NewRedisBroker[T task.TaskOrResult](
 }
 
 func (rb *RedisBroker[T]) Submit(ctx context.Context, submission T) error {
-	serialised, err := task.Serialize(submission)
+	serialised, err := rb.serialiser.Serialise(submission)
 	if err != nil {
 		return err
 	}
@@ -71,7 +81,7 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 				continue
 			}
 
-			result, err := task.Deserialize[T]([]byte(redisResult[1]))
+			result, err := rb.deserialiser.Deserialise([]byte(redisResult[1]))
 			if err != nil {
 				fmt.Println("Failed to deserialize task:", err)
 
