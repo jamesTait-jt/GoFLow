@@ -15,7 +15,7 @@ func Test_NewChannelBroker(t *testing.T) {
 		bufferSize := 10
 
 		// Act
-		b := NewChannelBroker(bufferSize)
+		b := NewChannelBroker[task.Task](bufferSize)
 
 		// Assert
 		assert.Equal(t, bufferSize, cap(b.taskQueue))
@@ -29,7 +29,7 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 			ID: "randomID",
 		}
 
-		b := ChannelBroker{
+		b := ChannelBroker[task.Task]{
 			taskQueue: make(chan task.Task, 1),
 		}
 
@@ -42,7 +42,7 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 
 	t.Run("Exits when the context is cancelled", func(t *testing.T) {
 		// Arrange
-		b := ChannelBroker{
+		b := ChannelBroker[task.Task]{
 			taskQueue: make(chan task.Task),
 		}
 
@@ -73,7 +73,7 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 
 	t.Run("Exits when the context is cancelled after submitting blocked task", func(t *testing.T) {
 		// Arrange
-		b := ChannelBroker{
+		b := ChannelBroker[task.Task]{
 			taskQueue: make(chan task.Task),
 		}
 
@@ -110,7 +110,7 @@ func Test_ChannelBroker_Dequeue(t *testing.T) {
 			ID: "randomID",
 		}
 
-		b := ChannelBroker{
+		b := ChannelBroker[task.Task]{
 			taskQueue: make(chan task.Task, 1),
 		}
 
