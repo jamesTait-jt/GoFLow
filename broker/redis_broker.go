@@ -10,15 +10,20 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type redisClient interface {
+	LPush(ctx context.Context, key string, values ...any) *redis.IntCmd
+	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd
+}
+
 type RedisBroker[T task.TaskOrResult] struct {
-	client        *redis.Client
+	client        redisClient
 	redisQueueKey string
 	outChan       chan T
 	started       sync.Once
 }
 
 func NewRedisBroker[T task.TaskOrResult](
-	client *redis.Client, key string,
+	client redisClient, key string,
 ) *RedisBroker[T] {
 	return &RedisBroker[T]{
 		client:        client,
