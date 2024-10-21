@@ -48,7 +48,8 @@ func Test_Pool_Start(t *testing.T) {
 		}
 
 		handlerCalled := false
-		taskHandlers.Put(taskType, func(payload any) task.Result {
+
+		taskHandlers.Put(taskType, func(_ any) task.Result {
 			handlerCalled = true
 
 			return resultToReturn
@@ -56,7 +57,8 @@ func Test_Pool_Start(t *testing.T) {
 
 		// Act
 		wp.Start(ctx, taskQueue, resultQueue, taskHandlers)
-		taskQueue.Submit(ctx, submittedTask)
+		_ = taskQueue.Submit(ctx, submittedTask)
+
 		receivedResult := <-resultQueue.Dequeue(ctx)
 
 		// Assert
@@ -90,7 +92,8 @@ func Test_Pool_Start(t *testing.T) {
 		}
 
 		handlerCalled := false
-		taskHandlers.Put(taskType, func(payload any) task.Result {
+
+		taskHandlers.Put(taskType, func(_ any) task.Result {
 			handlerCalled = true
 
 			return resultToReturn
@@ -98,7 +101,7 @@ func Test_Pool_Start(t *testing.T) {
 
 		// Act
 		wp.Start(ctx, taskQueue, resultQueue, taskHandlers)
-		taskQueue.Submit(ctx, submittedTask)
+		_ = taskQueue.Submit(ctx, submittedTask)
 		receivedResult := <-resultQueue.Dequeue(ctx)
 
 		// Assert
@@ -131,7 +134,8 @@ func Test_Pool_Start(t *testing.T) {
 		}
 
 		handlerCalled := false
-		taskHandlers.Put("not a key", func(payload any) task.Result {
+
+		taskHandlers.Put("not a key", func(_ any) task.Result {
 			handlerCalled = true
 
 			return resultToReturn
@@ -139,7 +143,7 @@ func Test_Pool_Start(t *testing.T) {
 
 		// Act
 		wp.Start(ctx, taskQueue, resultQueue, taskHandlers)
-		taskQueue.Submit(ctx, submittedTask)
+		_ = taskQueue.Submit(ctx, submittedTask)
 
 		// Assert
 		assert.False(t, handlerCalled)
@@ -148,39 +152,3 @@ func Test_Pool_Start(t *testing.T) {
 		wg.Wait()
 	})
 }
-
-// func TestPool_Start(t *testing.T) {
-// 	t.Run("Starts all workers in the pool", func(t *testing.T) {
-// 		// Arrange
-// 		numWorkers := 5
-// 		ctx := context.Background()
-// 		wg := &sync.WaitGroup{}
-// 		taskSource := &mockTaskSource{}
-// 		resultsCh := make(chan<- task.Result)
-
-// 		mockWorkers := make(map[int]*mockWorker)
-
-// 		for i := 0; i < numWorkers; i++ {
-// 			mockWorker := new(mockWorker)
-// 			mockWorker.On("Start", ctx, wg, taskSource, resultsCh).Once()
-// 			mockWorkers[i] = mockWorker
-// 		}
-
-// 		pool := &Pool{
-// 			workers: make(map[string]Worker),
-// 			wg:      wg,
-// 		}
-
-// 		for i := 0; i < numWorkers; i++ {
-// 			pool.workers[fmt.Sprintf("%d", i)] = mockWorkers[i]
-// 		}
-
-// 		// Act
-// 		pool.Start(ctx, taskSource, resultsCh)
-
-// 		// Assert
-// 		for i := 0; i < numWorkers; i++ {
-// 			mockWorkers[i].AssertCalled(t, "Start", ctx, wg, taskSource, resultsCh)
-// 		}
-// 	})
-// }

@@ -34,6 +34,7 @@ func (wp *Pool) Start(
 ) {
 	for i := 0; i < wp.numWorkers; i++ {
 		wp.wg.Add(1)
+
 		go worker(ctx, wp.wg, taskQueue, results, taskHandlers)
 	}
 }
@@ -50,6 +51,7 @@ func worker(
 	taskHandlers HandlerGetter,
 ) {
 	defer wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -80,7 +82,14 @@ func worker(
 				}).Error("Failed to process task")
 			}
 
-			results.Submit(ctx, result)
+			err := results.Submit(ctx, result)
+
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"task_id": t.ID,
+					"error":   err,
+				}).Error("Failed to write result")
+			}
 		}
 	}
 }
