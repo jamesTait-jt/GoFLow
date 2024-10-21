@@ -3,7 +3,9 @@ package goflow
 import (
 	"context"
 	"log"
+	"sync"
 
+	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
 )
@@ -56,26 +58,22 @@ type KVStore[K comparable, V any] interface {
 //
 // In local mode, GoFlow also manages the worker pool and task handler registry.
 type GoFlow struct {
-	ctx           context.Context
-	cancel        context.CancelFunc
-	workers       WorkerPool
-	taskBroker    Broker[task.Task]
-	taskHandlers  KVStore[string, task.Handler]
-	resultsBroker Broker[task.Result]
-	results       KVStore[string, task.Result]
+	ctx             context.Context
+	cancel          context.CancelFunc
+	workers         WorkerPool
+	taskBroker      Broker[task.Task]
+	taskHandlers    KVStore[string, task.Handler]
+	resultsBroker   Broker[task.Result]
+	results         KVStore[string, task.Result]
+	resultsWriterWG *sync.WaitGroup
 }
 
-// New creates and initializes a new GoFlow instance with the provided options.
+// New creates and initializes a new GoFlow instance in distributed mode.
 // It sets up the context for cancellation and configures the necessary components.
 // If no options are provided, default values are used (see defaultOptions()).
 //
-// The following configuration options can be specified using the corresponding
-// functions:
-//   - WithResultsStore: Sets a custom results store for task results.
-//   - WithTaskBroker: Sets a custom broker for submitting tasks.
-//   - WithResultBroker: Sets a custom broker for receiving results.
-//   - WithLocalMode: Configures the worker pool and task handler store for local mode.
-func New(opts ...Option) *GoFlow {
+// For detailed configuration options, see options.go.
+func New(taskBroker Broker[task.Task], resultsBroker Broker[task.Result], opts ...Option) *GoFlow {
 	options := defaultOptions()
 
 	for _, o := range opts {
@@ -85,13 +83,43 @@ func New(opts ...Option) *GoFlow {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	gf := GoFlow{
-		ctx:           ctx,
-		cancel:        cancel,
-		workers:       options.workerPool,
-		taskBroker:    options.taskBroker,
-		taskHandlers:  options.taskHandlerStore,
-		results:       options.resultsStore,
-		resultsBroker: options.resultBroker,
+		ctx:             ctx,
+		cancel:          cancel,
+		taskBroker:      taskBroker,
+		resultsBroker:   resultsBroker,
+		results:         options.resultsStore,
+		resultsWriterWG: &sync.WaitGroup{},
+	}
+
+	return &gf
+}
+
+// NewLocalMode creates and initializes a new GoFlow instance configured for local mode.
+// It sets up a worker pool and task/result brokers with specified sizes for task and
+// result queues. The context is also set up for cancellation, and if no options are
+// provided, default values are used (see defaultOptions()).
+//
+// For detailed configuration options, see options.go.
+func NewLocalMode(
+	numWorkers, taskQueueSize, resultQueueSize int,
+	taskHandlers KVStore[string, task.Handler], opts ...Option,
+) *GoFlow {
+	options := defaultOptions()
+
+	for _, o := range opts {
+		o.apply(&options)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	gf := GoFlow{
+		ctx:             ctx,
+		cancel:          cancel,
+		workers:         workerpool.New(numWorkers),
+		taskBroker:      broker.NewChannelBroker[task.Task](taskQueueSize),
+		resultsBroker:   broker.NewChannelBroker[task.Result](resultQueueSize),
+		results:         options.resultsStore,
+		resultsWriterWG: &sync.WaitGroup{},
 	}
 
 	return &gf
@@ -110,7 +138,8 @@ func (gf *GoFlow) Start() {
 		gf.workers.Start(gf.ctx, gf.taskBroker, gf.resultsBroker, gf.taskHandlers)
 	}
 
-	go gf.persistResults(gf.resultsBroker)
+	gf.resultsWriterWG.Add(1)
+	go gf.persistResults(gf.resultsBroker, gf.resultsWriterWG)
 }
 
 // Stop gracefully shuts down the GoFlow instance. It cancels the context to signal
@@ -118,6 +147,7 @@ func (gf *GoFlow) Start() {
 // it waits for all workers to complete their tasks and shut down before returning.
 func (gf *GoFlow) Stop() {
 	gf.cancel()
+	gf.resultsWriterWG.Wait()
 
 	if gf.workers != nil {
 		gf.workers.AwaitShutdown()
@@ -148,7 +178,10 @@ func (gf *GoFlow) RegisterHandler(taskType string, handler task.Handler) {
 func (gf *GoFlow) Push(taskType string, payload any) (string, error) {
 	t := task.New(taskType, payload)
 
-	gf.taskBroker.Submit(gf.ctx, t)
+	err := gf.taskBroker.Submit(gf.ctx, t)
+	if err != nil {
+		return "", err
+	}
 
 	return t.ID, nil
 }
@@ -163,7 +196,9 @@ func (gf *GoFlow) GetResult(taskID string) (task.Result, bool) {
 	return result, ok
 }
 
-func (gf *GoFlow) persistResults(results task.Dequeuer[task.Result]) {
+func (gf *GoFlow) persistResults(results task.Dequeuer[task.Result], wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	for {
 		select {
 		case <-gf.ctx.Done():
