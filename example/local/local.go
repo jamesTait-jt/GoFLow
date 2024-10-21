@@ -2,38 +2,36 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
+	"crypto/rand"
+
 	"github.com/jamesTait-jt/goflow"
-	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
-	"github.com/jamesTait-jt/goflow/workerpool"
-	"golang.org/x/exp/rand"
 )
 
 var (
-	numWorkers = 10
-	queueSize  = 5
+	numWorkers                  = 10
+	queueSize                   = 5
+	maxRandomSleepInMlliseconds = 1000
 )
 
 func main() {
 	resultsStore := store.NewInMemoryKVStore[string, task.Result]()
-	channelBroker := broker.NewChannelBroker[task.Task](queueSize)
 	taskHandlerStore := store.NewInMemoryKVStore[string, task.Handler]()
-	workerPool := workerpool.New(numWorkers)
 
-	gf := goflow.New(
-		goflow.WithLocalMode(workerPool, taskHandlerStore),
+	gf := goflow.NewLocalMode(
+		numWorkers, queueSize, queueSize,
+		taskHandlerStore,
 		goflow.WithResultsStore(resultsStore),
-		goflow.WithTaskBroker(channelBroker),
 	)
 
 	taskHandler := func(payload any) task.Result {
-		rand.Seed(uint64(time.Now().UnixNano()))
-		n := rand.Intn(1000)
-		fmt.Printf("Sleeping %d milliseconds...\n", n)
-		time.Sleep(time.Millisecond * time.Duration(n))
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(maxRandomSleepInMlliseconds)))
+		fmt.Printf("Sleeping %d milliseconds...\n", n.Int64())
+		time.Sleep(time.Millisecond * time.Duration(n.Int64()))
 
 		return task.Result{Payload: fmt.Sprintf("Processed: %v", payload)}
 	}

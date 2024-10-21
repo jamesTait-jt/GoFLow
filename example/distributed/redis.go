@@ -13,26 +13,30 @@ import (
 
 func main() {
 	fmt.Println("starting")
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: "127.0.0.1:6379",
 	})
+
 	fmt.Println("conntected to redis")
 
-	taskSubmitter := broker.NewRedisBroker[task.Task](redisClient, "tasks")
-	resultsGetter := broker.NewRedisBroker[task.Result](redisClient, "results")
 	resultsStore := store.NewInMemoryKVStore[string, task.Result]()
 
 	gf := goflow.New(
-		goflow.WithTaskBroker(taskSubmitter),
-		goflow.WithResultBroker(resultsGetter),
+		broker.NewRedisBroker[task.Task](redisClient, "tasks"),
+		broker.NewRedisBroker[task.Result](redisClient, "results"),
 		goflow.WithResultsStore(resultsStore),
 	)
 
 	gf.Start()
 
+	maxItrs := 100
+
 	results := make(chan task.Result)
-	for i := 0; i < 100; i++ {
+
+	for i := 0; i < maxItrs; i++ {
 		id, _ := gf.Push("testplugin", "Im a random sleeper")
+
 		go func() {
 			for {
 				result, ok := gf.GetResult(id)
@@ -42,7 +46,7 @@ func main() {
 				}
 
 				results <- result
-				if i == 99 {
+				if i == maxItrs-1 {
 					close(results)
 				}
 
