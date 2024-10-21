@@ -16,6 +16,7 @@ import (
 type Broker[T task.TaskOrResult] interface {
 	task.Submitter[T]
 	task.Dequeuer[T]
+	AwaitShutdown()
 }
 
 // WorkerPool is implemented only when running GoFlow in local mode. In distributed
@@ -148,6 +149,8 @@ func (gf *GoFlow) Start() {
 func (gf *GoFlow) Stop() {
 	gf.cancel()
 	gf.resultsWriterWG.Wait()
+	gf.resultsBroker.AwaitShutdown()
+	gf.taskBroker.AwaitShutdown()
 
 	if gf.workers != nil {
 		gf.workers.AwaitShutdown()

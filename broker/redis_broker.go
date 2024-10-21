@@ -30,6 +30,7 @@ type RedisBroker[T task.TaskOrResult] struct {
 	started       sync.Once
 	serialiser    serialiser[T]
 	deserialiser  deserialiser[T]
+	wg            *sync.WaitGroup
 }
 
 func NewRedisBroker[T task.TaskOrResult](
@@ -39,6 +40,7 @@ func NewRedisBroker[T task.TaskOrResult](
 		client:        client,
 		redisQueueKey: key,
 		outChan:       make(chan T),
+		wg:            &sync.WaitGroup{},
 	}
 }
 
@@ -58,6 +60,7 @@ func (rb *RedisBroker[T]) Submit(ctx context.Context, submission T) error {
 
 func (rb *RedisBroker[T]) Dequeue(ctx context.Context) <-chan T {
 	rb.started.Do(func() {
+		rb.wg.Add(1)
 		go rb.pollRedis(ctx)
 	})
 
@@ -65,6 +68,8 @@ func (rb *RedisBroker[T]) Dequeue(ctx context.Context) <-chan T {
 }
 
 func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
+	defer rb.wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -77,7 +82,9 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 					// BRPop timed out
 					continue
 				}
+
 				fmt.Println("BRPop error: " + err.Error())
+
 				continue
 			}
 
@@ -91,4 +98,8 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 			rb.outChan <- result
 		}
 	}
+}
+
+func (rb *RedisBroker[T]) AwaitShutdown() {
+	rb.wg.Wait()
 }

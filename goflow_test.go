@@ -14,50 +14,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type mockWorkerPool struct {
-	mock.Mock
-}
-
-func (m *mockWorkerPool) Start(
-	ctx context.Context,
-	taskQueue task.Dequeuer[task.Task],
-	results task.Submitter[task.Result],
-	taskHandlers workerpool.HandlerGetter,
-) {
-	m.Called(ctx, taskQueue, results, taskHandlers)
-}
-
-func (m *mockWorkerPool) AwaitShutdown() {
-	m.Called()
-}
-
-type mockBroker[T any] struct {
-	mock.Mock
-}
-
-func (m *mockBroker[T]) Submit(ctx context.Context, task T) error {
-	args := m.Called(ctx, task)
-	return args.Error(0)
-}
-
-func (m *mockBroker[T]) Dequeue(ctx context.Context) <-chan T {
-	args := m.Called(ctx)
-	return args.Get(0).(<-chan T)
-}
-
-type mockKVStore[K comparable, V any] struct {
-	mock.Mock
-}
-
-func (m *mockKVStore[K, V]) Put(key K, value V) {
-	m.Called(key, value)
-}
-
-func (m *mockKVStore[K, V]) Get(key K) (V, bool) {
-	args := m.Called(key)
-	return args.Get(0).(V), args.Bool(1)
-}
-
 func Test_New(t *testing.T) {
 	t.Run("Initialises goflow with default options in distributed mode", func(t *testing.T) {
 		// Arrange
@@ -366,22 +322,28 @@ func Test_GoFlow_GetResult(t *testing.T) {
 }
 
 func Test_GoFlow_Stop(t *testing.T) {
-	t.Run("Calls cancel, waits for all workers to shut down if in local mode", func(t *testing.T) {
+	t.Run("Calls cancel and waits for all components to shut down", func(t *testing.T) {
 		// Arrange
 		wasCancelCalled := false
 		mockCancel := func() {
 			wasCancelCalled = true
 		}
 
-		resultWriterWG := &sync.WaitGroup{}
-
 		mockWorkerPool := &mockWorkerPool{}
 		mockWorkerPool.On("AwaitShutdown").Once()
+
+		mockTaskBroker := &mockBroker[task.Task]{}
+		mockTaskBroker.On("AwaitShutdown").Once()
+
+		mockResultBroker := &mockBroker[task.Result]{}
+		mockResultBroker.On("AwaitShutdown").Once()
 
 		gf := GoFlow{
 			cancel:          mockCancel,
 			workers:         mockWorkerPool,
-			resultsWriterWG: resultWriterWG,
+			taskBroker:      mockTaskBroker,
+			resultsBroker:   mockResultBroker,
+			resultsWriterWG: &sync.WaitGroup{},
 		}
 
 		// Act
@@ -391,4 +353,52 @@ func Test_GoFlow_Stop(t *testing.T) {
 		assert.True(t, wasCancelCalled)
 		mockWorkerPool.AssertExpectations(t)
 	})
+}
+
+type mockWorkerPool struct {
+	mock.Mock
+}
+
+func (m *mockWorkerPool) Start(
+	ctx context.Context,
+	taskQueue task.Dequeuer[task.Task],
+	results task.Submitter[task.Result],
+	taskHandlers workerpool.HandlerGetter,
+) {
+	m.Called(ctx, taskQueue, results, taskHandlers)
+}
+
+func (m *mockWorkerPool) AwaitShutdown() {
+	m.Called()
+}
+
+type mockBroker[T any] struct {
+	mock.Mock
+}
+
+func (m *mockBroker[T]) Submit(ctx context.Context, task T) error {
+	args := m.Called(ctx, task)
+	return args.Error(0)
+}
+
+func (m *mockBroker[T]) Dequeue(ctx context.Context) <-chan T {
+	args := m.Called(ctx)
+	return args.Get(0).(<-chan T)
+}
+
+func (m *mockBroker[T]) AwaitShutdown() {
+	m.Called()
+}
+
+type mockKVStore[K comparable, V any] struct {
+	mock.Mock
+}
+
+func (m *mockKVStore[K, V]) Put(key K, value V) {
+	m.Called(key, value)
+}
+
+func (m *mockKVStore[K, V]) Get(key K) (V, bool) {
+	args := m.Called(key)
+	return args.Get(0).(V), args.Bool(1)
 }

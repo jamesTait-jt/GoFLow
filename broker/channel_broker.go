@@ -40,3 +40,5 @@ func (cb *ChannelBroker[T]) Submit(ctx context.Context, t T) error {
 func (cb *ChannelBroker[T]) Dequeue(_ context.Context) <-chan T {
 	return cb.taskQueue
 }
+
+func (cb *ChannelBroker[T]) AwaitShutdown() {}
