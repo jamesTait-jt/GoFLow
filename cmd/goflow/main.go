@@ -76,8 +76,8 @@ func main() {
 	resultsStore := store.NewInMemoryKVStore[string, task.Result]()
 
 	gf := goflow.New(
-		goflow.WithTaskBroker(taskSubmitter),
-		goflow.WithResultBroker(resultsGetter),
+		taskSubmitter,
+		resultsGetter,
 		goflow.WithResultsStore(resultsStore),
 	)
 
