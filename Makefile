@@ -12,3 +12,6 @@ build-goflow:
 	docker build -t goflow -f dockerfiles/Dockerfile.goflow .
 
 build: build-goflow build-workerpool build-pluginbuilder
+
+test: 
+	go test -race -coverprofile=coverage.out -covermode=atomic ./...
