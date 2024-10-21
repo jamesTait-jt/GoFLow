@@ -34,9 +34,10 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 		}
 
 		// Act
-		b.Submit(context.Background(), tsk)
+		err := b.Submit(context.Background(), tsk)
 
 		// Assert
+		assert.Nil(t, err)
 		assert.Equal(t, tsk, <-b.taskQueue)
 	})
 
@@ -56,8 +57,12 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 		cancel()
 
 		done := make(chan struct{})
+
+		var err error
+
 		go func() {
-			b.Submit(ctx, task.Task{})
+			err = b.Submit(ctx, task.Task{})
+
 			close(done)
 		}()
 
@@ -65,6 +70,8 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 		select {
 		case <-done:
 			// Success, the goroutine returned as expected
+			assert.Nil(t, err)
+
 		case <-testCtx.Done():
 			// The test context timed out, meaning the Submit method didn't exit as expected
 			t.Fatal("Submit did not return after context was cancelled")
@@ -85,8 +92,12 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 
 		// Act
 		done := make(chan struct{})
+
+		var err error
+
 		go func() {
-			b.Submit(ctx, task.Task{})
+			err = b.Submit(ctx, task.Task{})
+
 			close(done)
 		}()
 
@@ -96,6 +107,7 @@ func Test_ChannelBroker_Submit(t *testing.T) {
 		select {
 		case <-done:
 			// Success, the goroutine returned as expected
+			assert.Nil(t, err)
 		case <-testCtx.Done():
 			// The test context timed out, meaning the Submit method didn't exit as expected
 			t.Fatal("Submit did not return after context was cancelled")
