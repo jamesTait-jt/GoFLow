@@ -6,13 +6,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/config"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func Push(taskType, payload string) error {
+func Get(taskID string) error {
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("localhost:%s", config.GoFlowHostPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -27,11 +27,13 @@ func Push(taskType, payload string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := goFlowClient.PushTask(ctx, &pb.PushTaskRequest{TaskType: taskType, Payload: payload})
+	r, err := goFlowClient.GetResult(ctx, &pb.GetResultRequest{TaskID: taskID})
 	if err != nil {
-		log.Fatalf("could not push: %v", err)
+		log.Printf("could not get result: %v", err)
+		return nil
 	}
-	log.Printf("Task ID: %s", r.GetId())
+
+	log.Printf("Result: %s", r.GetResult())
 
 	return nil
 }

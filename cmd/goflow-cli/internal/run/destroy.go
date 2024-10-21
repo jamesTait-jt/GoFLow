@@ -3,8 +3,8 @@ package run
 import (
 	"fmt"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/docker"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/docker"
 )
 
 func Destroy() error {

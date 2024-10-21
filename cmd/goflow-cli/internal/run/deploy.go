@@ -6,8 +6,8 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/docker"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/docker"
 )
 
 func Deploy(handlersPath string) error {

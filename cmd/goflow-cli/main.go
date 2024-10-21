@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/run"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/run"
 	"github.com/spf13/cobra"
 )
 
