@@ -193,6 +193,7 @@ func (gf *GoFlow) Push(taskType string, payload any) (string, error) {
 // task has not yet completed or does not exist, the boolean will be false.
 func (gf *GoFlow) GetResult(taskID string) (task.Result, bool) {
 	result, ok := gf.results.Get(taskID)
+
 	return result, ok
 }
 

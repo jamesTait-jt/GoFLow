@@ -2,6 +2,7 @@ package goflow
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -36,7 +37,7 @@ type mockBroker[T any] struct {
 
 func (m *mockBroker[T]) Submit(ctx context.Context, task T) error {
 	args := m.Called(ctx, task)
-	return args.Get(0).(error)
+	return args.Error(0)
 }
 
 func (m *mockBroker[T]) Dequeue(ctx context.Context) <-chan T {
@@ -276,7 +277,7 @@ func Test_GoFlow_Push(t *testing.T) {
 
 		var submittedTask task.Task
 
-		mockBroker.On("Submit", mock.Anything, mock.Anything).Once().Return((error)(nil)).Run(func(args mock.Arguments) {
+		mockBroker.On("Submit", mock.Anything, mock.Anything).Once().Return(nil).Run(func(args mock.Arguments) {
 			submittedTask, _ = args.Get(1).(task.Task)
 		})
 
@@ -294,75 +295,100 @@ func Test_GoFlow_Push(t *testing.T) {
 
 		mockBroker.AssertExpectations(t)
 	})
+
+	t.Run("Returns an error if task submission fails", func(t *testing.T) {
+		// Arrange
+		mockBroker := new(mockBroker[task.Task])
+
+		ctx := context.Background()
+
+		gf := GoFlow{
+			ctx:        ctx,
+			taskBroker: mockBroker,
+		}
+
+		submissionError := errors.New("submission error")
+		mockBroker.On("Submit", mock.Anything, mock.Anything).Once().Return(submissionError)
+
+		// Act
+		_, err := gf.Push("exampleTask", "examplePayload")
+
+		// Assert
+		assert.EqualError(t, err, submissionError.Error())
+
+		mockBroker.AssertExpectations(t)
+	})
 }
 
-// func Test_goflow_GetResult(t *testing.T) {
-// 	t.Run("Returns the result of given taskID if it exists", func(t *testing.T) {
-// 		// Arrange
-// 		mockResults := new(mockKVStore[string, task.Result])
+func Test_GoFlow_GetResult(t *testing.T) {
+	t.Run("Returns the result of given taskID if it exists", func(t *testing.T) {
+		// Arrange
+		mockResults := new(mockKVStore[string, task.Result])
 
-// 		gf := GoFlow{
-// 			results: mockResults,
-// 		}
+		gf := GoFlow{
+			results: mockResults,
+		}
 
-// 		taskID := "taskID"
+		taskID := "taskID"
 
-// 		expectedResult := task.Result{Payload: "result"}
+		expectedResult := task.Result{Payload: "result"}
 
-// 		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, true)
+		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, true)
 
-// 		// Act
-// 		result, ok := gf.GetResult(taskID)
+		// Act
+		result, ok := gf.GetResult(taskID)
 
-// 		// Assert
-// 		assert.Equal(t, expectedResult, result)
-// 		assert.True(t, ok)
-// 	})
-// 	t.Run("Returns false if given taskID doesn't exist", func(t *testing.T) {
-// 		// Arrange
-// 		mockResults := new(mockKVStore[string, task.Result])
+		// Assert
+		assert.Equal(t, expectedResult, result)
+		assert.True(t, ok)
+	})
+	t.Run("Returns false if given taskID doesn't exist", func(t *testing.T) {
+		// Arrange
+		mockResults := new(mockKVStore[string, task.Result])
 
-// 		gf := GoFlow{
-// 			results: mockResults,
-// 		}
+		gf := GoFlow{
+			results: mockResults,
+		}
 
-// 		taskID := "taskID"
+		taskID := "taskID"
 
-// 		expectedResult := task.Result{}
+		expectedResult := task.Result{}
 
-// 		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, false)
+		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, false)
 
-// 		// Act
-// 		result, ok := gf.GetResult(taskID)
+		// Act
+		result, ok := gf.GetResult(taskID)
 
-// 		// Assert
-// 		assert.Equal(t, expectedResult, result)
-// 		assert.False(t, ok)
-// 	})
-// }
+		// Assert
+		assert.Equal(t, expectedResult, result)
+		assert.False(t, ok)
+	})
+}
 
-// func Test_goflow_Stop(t *testing.T) {
-// 	t.Run("Calls cancel, waits for all workers to shut down, and closes the results channel", func(t *testing.T) {
-// 		// Arrange
-// 		wasCancelCalled := false
-// 		mockCancel := func() {
-// 			wasCancelCalled = true
-// 		}
+func Test_GoFlow_Stop(t *testing.T) {
+	t.Run("Calls cancel, waits for all workers to shut down if in local mode", func(t *testing.T) {
+		// Arrange
+		wasCancelCalled := false
+		mockCancel := func() {
+			wasCancelCalled = true
+		}
 
-// 		mockWorkerPool := &mockWorkerPool{}
-// 		mockWorkerPool.On("AwaitShutdown").Once()
+		resultWriterWG := &sync.WaitGroup{}
 
-// 		gf := GoFlow{
-// 			cancel:    mockCancel,
-// 			workers:   mockWorkerPool,
-// 			resultsCh: make(chan task.Result),
-// 		}
+		mockWorkerPool := &mockWorkerPool{}
+		mockWorkerPool.On("AwaitShutdown").Once()
 
-// 		// Act
-// 		gf.Stop()
+		gf := GoFlow{
+			cancel:          mockCancel,
+			workers:         mockWorkerPool,
+			resultsWriterWG: resultWriterWG,
+		}
 
-// 		// Assert
-// 		assert.True(t, wasCancelCalled)
-// 		mockWorkerPool.AssertExpectations(t)
-// 	})
-// }
+		// Act
+		gf.Stop()
+
+		// Assert
+		assert.True(t, wasCancelCalled)
+		mockWorkerPool.AssertExpectations(t)
+	})
+}
