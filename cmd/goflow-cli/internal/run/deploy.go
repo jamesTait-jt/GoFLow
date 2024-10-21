@@ -10,7 +10,15 @@ import (
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/docker"
 )
 
-func Deploy(handlersPath string) error {
+func Deploy(handlersPath string, local bool) error {
+	if local {
+		return deployLocal(handlersPath)
+	}
+
+	return deployKubernetes(handlersPath)
+}
+
+func deployLocal(handlersPath string) error {
 	dockerClient, err := docker.New()
 	if err != nil {
 		return fmt.Errorf("error creating Docker client: %v", err)
@@ -50,6 +58,12 @@ func Deploy(handlersPath string) error {
 	fmt.Println("Deployment successful!")
 
 	return nil
+}
+
+func deployKubernetes(handlersPath string) error {
+	
+
+	return errors.New("kubernetes deployment not defined yet")
 }
 
 func startGoflowService(dockerClient *docker.Docker) error {

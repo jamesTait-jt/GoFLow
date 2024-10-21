@@ -26,3 +26,6 @@ go.work.sum
 
 # handler directory used for testing
 handlers
+
+# Config for goflow CLI
+.goflow.yaml
