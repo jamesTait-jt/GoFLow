@@ -9,7 +9,7 @@ build-goflow:
     	--go-grpc_out=. --go-grpc_opt=paths=source_relative \
     	cmd/goflow/goflow/goflow.proto
 
-	docker build -t goflow -f dockerfiles/Dockerfile.goflow .
+	docker build -t goflow-server -f dockerfiles/Dockerfile.goflow .
 
 build: build-goflow build-workerpool build-pluginbuilder
 
