@@ -47,7 +47,7 @@ func initialiseBrokers(brokerType, brokerAddr string) (task.Dequeuer[task.Task],
 			Addr: brokerAddr,
 		})
 
-		// TODO: Default for gob for now - allow options
+		// TODO: Default to gob for now - allow options
 		taskSerialiser := serialise.NewGobSerialiser[task.Task]()
 		resultSerialiser := serialise.NewGobSerialiser[task.Result]()
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/redis"
-	batchv1 "k8s.io/api/batch/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,7 +19,11 @@ var (
 	volumeMountName            = "handlers-volume-mount"
 	pluginBuilderContainerName = "plugin-builder-container"
 	workerpoolContainerName    = "workerpool-container"
-	jobName                    = "workerpool-job"
+	deploymentName             = "workerpool-deployment"
+
+	labels = map[string]string{
+		"app": "goflow-workerpool",
+	}
 )
 
 func HandlersPV(conf *config.Config) *apiv1.PersistentVolume {
@@ -65,7 +69,7 @@ func HandlersPVC(conf *config.Config) *apiv1.PersistentVolumeClaim {
 	}
 }
 
-func Job(conf *config.Config) *batchv1.Job {
+func Deployment(conf *config.Config) *appsv1.Deployment {
 	pluginBuilderContainer := apiv1.Container{
 		Name:            pluginBuilderContainerName,
 		Image:           conf.Workerpool.PluginBuilderImage,
@@ -96,14 +100,21 @@ func Job(conf *config.Config) *batchv1.Job {
 		},
 	}
 
-	return &batchv1.Job{
+	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: jobName,
+			Name: deploymentName,
 		},
-		Spec: batchv1.JobSpec{
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &conf.Workerpool.Replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
 				Spec: apiv1.PodSpec{
-					RestartPolicy: apiv1.RestartPolicyNever,
+					RestartPolicy: apiv1.RestartPolicyAlways,
 					InitContainers: []apiv1.Container{
 						pluginBuilderContainer,
 					},

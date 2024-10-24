@@ -27,7 +27,7 @@ type GoFlowServer struct {
 
 type Workerpool struct {
 	Image              string `yaml:"image"`
-	Replicas           int    `yaml:"replicas"`
+	Replicas           int32  `yaml:"replicas"`
 	PathToHandlers     string `yaml:"path_to_handlers"`
 	PluginBuilderImage string `yaml:"plugin_builder_image"`
 }

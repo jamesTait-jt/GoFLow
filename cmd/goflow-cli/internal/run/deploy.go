@@ -94,6 +94,8 @@ func deployKubernetes(conf *config.Config) error {
 		return err
 	}
 
+	fmt.Println("Uploading plugins...")
+
 	if err = kubeClient.CreateOrReplacePV(workerpool.HandlersPV(conf)); err != nil {
 		return err
 	}
@@ -102,7 +104,9 @@ func deployKubernetes(conf *config.Config) error {
 		return err
 	}
 
-	if err = kubeClient.CreateOrReplaceAndRunJob(workerpool.Job(conf)); err != nil {
+	fmt.Println("Starting workerpool...")
+
+	if err = kubeClient.CreateOrReplaceDeployment(workerpool.Deployment(conf)); err != nil {
 		return err
 	}
 
