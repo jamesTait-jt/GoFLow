@@ -7,12 +7,6 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
-ls -la
-cd handlers
-echo "in handlers!!!"
-ls -la
-pwd
-
 # Compile all Go files in the specified directory
 for file in "$1"/*.go; do
     # Get the base name without the extension for output
