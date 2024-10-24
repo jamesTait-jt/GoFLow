@@ -1,9 +1,7 @@
 package task
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 
 	"github.com/google/uuid"
 )
@@ -45,32 +43,4 @@ type Submitter[T TaskOrResult] interface {
 
 type Dequeuer[T TaskOrResult] interface {
 	Dequeue(ctx context.Context) <-chan T
-}
-
-func Serialize[T any](t T) ([]byte, error) {
-	var buf bytes.Buffer
-	encoder := gob.NewEncoder(&buf)
-	err := encoder.Encode(t)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-func Deserialize[T any](data []byte) (T, error) {
-	var t T
-
-	buf := bytes.NewBuffer(data)
-
-	decoder := gob.NewDecoder(buf)
-
-	err := decoder.Decode(&t)
-
-	if err != nil {
-		return t, err
-	}
-
-	return t, nil
 }
