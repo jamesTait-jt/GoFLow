@@ -2,11 +2,11 @@ package run
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 	"log"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	// "github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -14,7 +14,8 @@ import (
 
 func Push(taskType, payload string) error {
 	conn, err := grpc.NewClient(
-		fmt.Sprintf("localhost:%s", config.GoFlowHostPort),
+		// fmt.Sprintf("192.168.58.2:%s", config.GoFlowHostPort),
+		"127.0.0.1:50052",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
