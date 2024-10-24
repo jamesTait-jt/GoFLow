@@ -1,0 +1,15 @@
+goflow_server:
+  image: "goflow-server:latest"
+  replicas: 1
+  port: 30000
+workerpool:
+  image: "workerpool"
+  replicas: 5
+  path_to_handlers: "/home/docker/handlers"
+  plugin_builder_image: "plugin-builder"
+redis:
+  image: "redis:latest"
+  replicas: 1
+kubernetes:
+  namespace: "goflow"
+  clusterUrl: "https://127.0.0.1:32771"
