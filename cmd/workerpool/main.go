@@ -51,8 +51,8 @@ func initialiseBrokers(brokerType, brokerAddr string) (task.Dequeuer[task.Task],
 		taskSerialiser := serialise.NewGobSerialiser[task.Task]()
 		resultSerialiser := serialise.NewGobSerialiser[task.Result]()
 
-		taskQueue := broker.NewRedisBroker[task.Task](redisClient, "tasks", taskSerialiser, nil)
-		resultQueue := broker.NewRedisBroker[task.Result](redisClient, "results", nil, resultSerialiser)
+		taskQueue := broker.NewRedisBroker[task.Task](redisClient, "tasks", nil, taskSerialiser)
+		resultQueue := broker.NewRedisBroker[task.Result](redisClient, "results", resultSerialiser, nil)
 
 		return taskQueue, resultQueue, nil
 
