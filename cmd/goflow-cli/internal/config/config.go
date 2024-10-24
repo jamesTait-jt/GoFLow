@@ -1,12 +1,16 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
+
+// config will be set when the LoadConfig function is called
+var config *Config
 
 type Config struct {
 	GoFlowServer GoFlowServer `yaml:"goflow_server"`
@@ -18,7 +22,7 @@ type Config struct {
 type GoFlowServer struct {
 	Image    string `yaml:"image"`
 	Replicas int32  `yaml:"replicas"`
-	Port     int32  `yaml:"port"`
+	Address  string `yaml:"address"`
 }
 
 type Workerpool struct {
@@ -38,20 +42,31 @@ type Kubernetes struct {
 	ClusterURL string `yaml:"clusterUrl"`
 }
 
-func LoadConfig(filePath string) (*Config, error) {
+func Load(filePath string) error {
 	yamlFile, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
-		return nil, fmt.Errorf("error reading .goflow.yaml: %v", err)
+		return fmt.Errorf("error reading .goflow.yaml: %v", err)
 	}
 
-	var config Config
-	err = yaml.Unmarshal(yamlFile, &config)
+	var innerConfig Config
+
+	err = yaml.Unmarshal(yamlFile, &innerConfig)
+
+	config = &innerConfig
 
 	if err != nil {
-		return nil, fmt.Errorf("error parsing .goflow.yaml: %v", err)
+		return fmt.Errorf("error parsing .goflow.yaml: %v", err)
 	}
 
-	return &config, nil
+	return nil
+}
+
+func Get() (*Config, error) {
+	if config == nil {
+		return nil, errors.New("config has not been loaded")
+	}
+
+	return config, nil
 }
 
 var GoFlowHostPort = "30000"

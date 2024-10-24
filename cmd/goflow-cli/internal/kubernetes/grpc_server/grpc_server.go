@@ -62,13 +62,13 @@ func Service(conf *config.Config) *apiv1.Service {
 			Namespace: conf.Kubernetes.Namespace,
 		},
 		Spec: apiv1.ServiceSpec{
-			Selector: labels,
-			Type:     apiv1.ServiceTypeLoadBalancer,
+			Selector:       labels,
+			Type:           apiv1.ServiceTypeLoadBalancer,
+			LoadBalancerIP: conf.GoFlowServer.Address,
 			Ports: []apiv1.ServicePort{
 				{
 					Port:       grpcPort,
 					TargetPort: intstr.FromInt32(grpcPort),
-					// NodePort:   conf.GoFlowServer.Port,
 				},
 			},
 		},

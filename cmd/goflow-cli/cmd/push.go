@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/run"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +26,12 @@ var pushCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		return run.Push(args[0], args[1])
+		conf, err := config.Get()
+		if err != nil {
+			return err
+		}
+
+		return run.Push(args[0], args[1], conf.GoFlowServer.Address)
 	},
 }
 

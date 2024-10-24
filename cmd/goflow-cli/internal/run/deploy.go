@@ -14,12 +14,13 @@ import (
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/workerpool"
 )
 
-func Deploy(handlersPath string, local bool) error {
-	if local {
-		return deployLocal(handlersPath)
-	}
+// TODO: Make this accept a deploytOpts struct or something
+func Deploy(conf *config.Config) error {
+	// if local {
+	// return deployLocal(handlersPath)
+	// }
 
-	return deployKubernetes(handlersPath)
+	return deployKubernetes(conf)
 }
 
 func deployLocal(handlersPath string) error {
@@ -64,11 +65,7 @@ func deployLocal(handlersPath string) error {
 	return nil
 }
 
-func deployKubernetes(handlersPath string) error {
-	conf, err := config.LoadConfig("/Users/James.Tait/go/src/github.com/jamesTait-jt/goflow/.goflow.yaml")
-	if err != nil {
-		return err
-	}
+func deployKubernetes(conf *config.Config) error {
 
 	kubeClient, err := kubernetes.New(conf.Kubernetes.ClusterURL, conf.Kubernetes.Namespace)
 	if err != nil {

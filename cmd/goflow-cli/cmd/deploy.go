@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/run"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +15,12 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy workerpool with Redis broker and compiled plugins",
 	RunE: func(_ *cobra.Command, _ []string) error {
-		return run.Deploy(handlersPath, local)
+		conf, err := config.Get()
+		if err != nil {
+			return err
+		}
+
+		return run.Deploy(conf)
 	},
 }
 
