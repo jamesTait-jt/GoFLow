@@ -68,18 +68,3 @@ func Get() (*Config, error) {
 
 	return config, nil
 }
-
-var GoFlowHostPort = "30000"
-
-var DockerNetworkID = "goflow-network"
-
-var GoflowImage = "goflow-server:latest"
-var GoflowContainerName = "goflow-server"
-
-var RedisImage = "redis:latest"
-var RedisContainerName = "goflow-redis-server"
-
-var PluginBuilderImage = "plugin-builder"
-
-var WorkerpoolImage = "workerpool"
-var WorkerpoolContainerName = "goflow-workerpool"
