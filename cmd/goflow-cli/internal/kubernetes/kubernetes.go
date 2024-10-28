@@ -12,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 )
 
 type kubeConfigBuilder interface {
@@ -23,11 +25,30 @@ type kubeClientBuilder interface {
 	NewForConfig(config *rest.Config) (*kubernetes.Clientset, error)
 }
 
+type watchable interface {
+	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
+}
+
+type deploymentsClient interface {
+	Apply(
+		ctx context.Context,
+		deployment *acappsv1.DeploymentApplyConfiguration,
+		opts metav1.ApplyOptions,
+	) (result *appsv1.Deployment, err error)
+	watchable
+}
+
+type eventWaiter interface {
+	WaitFor(resourceName, namespace string, eventTypes []watch.EventType, client watchable) error
+}
+
 type KubeClient struct {
-	ctx       context.Context
-	client    *kubernetes.Clientset
-	namespace string
-	logger    log.Logger
+	ctx               context.Context
+	client            *kubernetes.Clientset
+	deploymentsClient deploymentsClient
+	namespace         string
+	waiter            eventWaiter
+	logger            log.Logger
 }
 
 func New(clusterURL string, opts ...Option) (*KubeClient, error) {
@@ -52,99 +73,15 @@ func New(clusterURL string, opts ...Option) (*KubeClient, error) {
 		return nil, err
 	}
 
+	ctx := context.Background()
 	client := &KubeClient{
-		ctx:    context.Background(),
+		ctx:    ctx,
 		client: clientset,
+		waiter: NewWaiter(ctx, options.logger),
 		logger: options.logger,
 	}
 
 	return client, nil
-}
-
-func (k *KubeClient) CreateOrUpdateDeployment(deployment *appsv1.Deployment) error {
-	deploymentsClient := k.client.AppsV1().Deployments(k.namespace)
-
-	_, err := deploymentsClient.Create(k.ctx, deployment, metav1.CreateOptions{})
-	if err == nil {
-		return k.waitFor(deployment.Name, k.namespace, watch.Added, deploymentsClient)
-	}
-
-	if !k8serr.IsAlreadyExists(err) {
-		return err
-	}
-
-	// fmt.Println("Deployment existed - replacing")
-
-	_, err = deploymentsClient.Update(k.ctx, deployment, metav1.UpdateOptions{})
-	if err != nil {
-		return nil
-	}
-
-	// fmt.Println("Deployment replaced successfully!")
-
-	return err
-}
-
-func (k *KubeClient) CreateOrUpdateService(service *apiv1.Service) error {
-	servicesClient := k.client.CoreV1().Services(k.namespace)
-
-	_, err := servicesClient.Get(k.ctx, service.Name, metav1.GetOptions{})
-
-	if err == nil {
-		// fmt.Println("Service existed - replacing")
-
-		if _, err = servicesClient.Update(k.ctx, service, metav1.UpdateOptions{}); err != nil {
-			return err
-		}
-
-		// fmt.Println("Service replaced successfully!")
-
-		return nil
-	}
-
-	if !k8serr.IsNotFound(err) {
-		return err
-	}
-
-	_, err = servicesClient.Create(k.ctx, service, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return k.waitFor(service.Name, k.namespace, watch.Added, servicesClient)
-}
-
-func (k *KubeClient) CreatePV(pv *apiv1.PersistentVolume) error {
-	pvClient := k.client.CoreV1().PersistentVolumes()
-
-	_, err := pvClient.Create(k.ctx, pv, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return k.waitFor(pv.Name, "", watch.Added, pvClient)
-}
-
-func (k *KubeClient) DestroyPV(pvName string) error {
-	pvClient := k.client.CoreV1().PersistentVolumes()
-
-	err := pvClient.Delete(k.ctx, pvName, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-
-	return k.waitFor(pvName, "", watch.Deleted, pvClient)
-}
-
-func (k *KubeClient) CreatePVC(pvc *apiv1.PersistentVolumeClaim) error {
-	pvcClient := k.client.CoreV1().PersistentVolumeClaims(k.namespace)
-
-	_, err := pvcClient.Create(k.ctx, pvc, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return k.waitFor(pvc.Name, k.namespace, watch.Added, pvcClient)
 }
 
 func (k *KubeClient) CreateNamespaceIfNotExists(namespace string) error {
@@ -169,23 +106,15 @@ func (k *KubeClient) CreateNamespaceIfNotExists(namespace string) error {
 		},
 	}
 
-	stopLog := k.logger.Waiting(fmt.Sprintf("Creating namespace '%s'", namespace))
-
 	_, err = namespacesClient.Create(k.ctx, namespaceObject, metav1.CreateOptions{})
 	if err != nil {
-		stopLog("Failed to create namespace", false)
-
 		return err
 	}
 
-	err = k.waitFor(namespace, "", watch.Added, namespacesClient)
+	err = k.waiter.WaitFor(namespace, "", []watch.EventType{watch.Added}, namespacesClient)
 	if err != nil {
-		stopLog("Failed waiting for namespace creation", false)
-
 		return err
 	}
-
-	stopLog(fmt.Sprintf("Successfully created namespace '%s'", namespace), true)
 
 	k.namespace = namespace
 
@@ -202,36 +131,100 @@ func (k *KubeClient) DestroyNamespace(namespace string) error {
 
 	k.namespace = namespace
 
-	return k.waitFor(namespace, "", watch.Deleted, namespacesClient)
+	return k.waiter.WaitFor(namespace, "", []watch.EventType{watch.Deleted}, namespacesClient)
 }
 
-type watchable interface {
-	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
+func (k *KubeClient) InitialiseClients() {
+	k.deploymentsClient = k.client.AppsV1().Deployments(k.namespace)
 }
 
-func (k *KubeClient) waitFor(resourceName, namespace string, eventType watch.EventType, client watchable) error {
-	// This won't be populated if we're destroying or creating a namespace
-	var fieldSelector string
-	if namespace != "" {
-		fieldSelector = fmt.Sprintf("metadata.name=%s,metadata.namespace=%s", resourceName, namespace)
-	} else {
-		fieldSelector = fmt.Sprintf("metadata.name=%s", resourceName)
-	}
+func (k *KubeClient) ApplyDeployment(deploymentConfig *acappsv1.DeploymentApplyConfiguration) error {
+	deployment, err := k.deploymentsClient.Apply(
+		k.ctx, deploymentConfig, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
+	)
 
-	watcher, err := client.Watch(k.ctx, metav1.ListOptions{
-		FieldSelector: fieldSelector,
-	})
 	if err != nil {
 		return err
 	}
-	defer watcher.Stop()
 
-	for event := range watcher.ResultChan() {
-		if event.Type == eventType {
-			return nil
-		}
+	// no changes required
+	if deployment == nil {
+		k.logger.Info(fmt.Sprintf("No changes required for deployment '%s'", *deploymentConfig.Name))
+
+		return nil
 	}
 
-	// TODO: This will never reach as we don't have a timeout
-	return nil
+	_, err = k.deploymentsClient.Apply(
+		k.ctx, deploymentConfig, metav1.ApplyOptions{FieldManager: "goflow-cli"},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return k.waiter.WaitFor(
+		*deploymentConfig.Name,
+		k.namespace,
+		[]watch.EventType{watch.Added, watch.Modified},
+		k.deploymentsClient,
+	)
+}
+
+func (k *KubeClient) CreateOrUpdateService(service *apiv1.Service) error {
+	servicesClient := k.client.CoreV1().Services(k.namespace)
+
+	_, err := servicesClient.Get(k.ctx, service.Name, metav1.GetOptions{})
+
+	// Service already exists
+	if err == nil {
+		if _, err = servicesClient.Update(k.ctx, service, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if !k8serr.IsNotFound(err) {
+		return err
+	}
+
+	_, err = servicesClient.Create(k.ctx, service, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return k.waiter.WaitFor(service.Name, k.namespace, []watch.EventType{watch.Added}, servicesClient)
+}
+
+func (k *KubeClient) CreatePV(pv *apiv1.PersistentVolume) error {
+	pvClient := k.client.CoreV1().PersistentVolumes()
+
+	_, err := pvClient.Create(k.ctx, pv, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return k.waiter.WaitFor(pv.Name, "", []watch.EventType{watch.Added}, pvClient)
+}
+
+func (k *KubeClient) DestroyPV(pvName string) error {
+	pvClient := k.client.CoreV1().PersistentVolumes()
+
+	err := pvClient.Delete(k.ctx, pvName, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+
+	return k.waiter.WaitFor(pvName, "", []watch.EventType{watch.Deleted}, pvClient)
+}
+
+func (k *KubeClient) CreatePVC(pvc *apiv1.PersistentVolumeClaim) error {
+	pvcClient := k.client.CoreV1().PersistentVolumeClaims(k.namespace)
+
+	_, err := pvcClient.Create(k.ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return k.waiter.WaitFor(pvc.Name, k.namespace, []watch.EventType{watch.Added}, pvcClient)
 }

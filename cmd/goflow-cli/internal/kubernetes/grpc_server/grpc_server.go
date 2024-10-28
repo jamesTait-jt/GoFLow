@@ -2,10 +2,12 @@ package grpcserver
 
 import (
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
+	accorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	acmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 var (
@@ -19,39 +21,38 @@ var (
 	}
 )
 
-func Deployment(conf *config.Config) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      deploymentName,
-			Namespace: conf.Kubernetes.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &conf.GoFlowServer.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
-						{
-							Name:            deploymentContainerName,
-							Image:           conf.GoFlowServer.Image,
-							ImagePullPolicy: apiv1.PullNever,
-							Ports: []apiv1.ContainerPort{
-								{
-									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: grpcPort,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
+	return acappsv1.Deployment(
+		deploymentName, conf.Kubernetes.Namespace,
+	).WithLabels(
+		labels,
+	).WithSpec(
+		acappsv1.DeploymentSpec().WithReplicas(
+			conf.GoFlowServer.Replicas,
+		).WithSelector(
+			acmetav1.LabelSelector().WithMatchLabels(labels),
+		).WithTemplate(
+			accorev1.PodTemplateSpec().WithLabels(
+				labels,
+			).WithSpec(
+				accorev1.PodSpec().WithContainers(
+					accorev1.Container().WithName(
+						deploymentContainerName,
+					).WithImage(
+						conf.GoFlowServer.Image,
+					).WithImagePullPolicy(
+						apiv1.PullNever,
+					).WithPorts(
+						accorev1.ContainerPort().WithProtocol(
+							apiv1.ProtocolTCP,
+						).WithContainerPort(
+							grpcPort,
+						),
+					),
+				),
+			),
+		),
+	)
 }
 
 func Service(conf *config.Config) *apiv1.Service {

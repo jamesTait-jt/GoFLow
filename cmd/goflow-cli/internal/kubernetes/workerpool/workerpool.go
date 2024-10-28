@@ -5,10 +5,12 @@ import (
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/redis"
-	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
+	accorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	acmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 var (
@@ -69,70 +71,66 @@ func HandlersPVC(conf *config.Config) *apiv1.PersistentVolumeClaim {
 	}
 }
 
-func Deployment(conf *config.Config) *appsv1.Deployment {
-	pluginBuilderContainer := apiv1.Container{
-		Name:            pluginBuilderContainerName,
-		Image:           conf.Workerpool.PluginBuilderImage,
-		ImagePullPolicy: apiv1.PullNever,
-		Args:            []string{"/app/handlers"},
-		VolumeMounts: []apiv1.VolumeMount{
-			{
-				Name:      volumeMountName,
-				MountPath: "/app/handlers",
-			},
-		},
-	}
+func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
+	volumeMount := accorev1.VolumeMount().WithName(
+		volumeMountName,
+	).WithMountPath(
+		"/app/handlers",
+	)
 
-	workerpoolContainer := apiv1.Container{
-		Name:            workerpoolContainerName,
-		Image:           conf.Workerpool.Image,
-		ImagePullPolicy: apiv1.PullNever,
-		Args: []string{
-			"--broker-type", "redis",
-			"--broker-addr", fmt.Sprintf("%s:%d", redis.ServiceName, redis.RedisPort),
-			"--handlers-path", "/app/handlers/compiled",
-		},
-		VolumeMounts: []apiv1.VolumeMount{
-			{
-				Name:      volumeMountName,
-				MountPath: "/app/handlers",
-			},
-		},
-	}
+	pluginBuilderContainer := accorev1.Container().WithName(
+		pluginBuilderContainerName,
+	).WithImage(
+		conf.Workerpool.PluginBuilderImage,
+	).WithImagePullPolicy(
+		apiv1.PullNever,
+	).WithArgs(
+		"/app/handlers",
+	).WithVolumeMounts(
+		volumeMount,
+	)
 
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: deploymentName,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &conf.Workerpool.Replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: apiv1.PodSpec{
-					RestartPolicy: apiv1.RestartPolicyAlways,
-					InitContainers: []apiv1.Container{
-						pluginBuilderContainer,
-					},
-					Containers: []apiv1.Container{
-						workerpoolContainer,
-					},
-					Volumes: []apiv1.Volume{
-						{
-							Name: volumeMountName,
-							VolumeSource: apiv1.VolumeSource{
-								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-									ClaimName: pvcName,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	workerpoolContainer := accorev1.Container().WithName(
+		workerpoolContainerName,
+	).WithImage(
+		conf.Workerpool.Image,
+	).WithImagePullPolicy(
+		apiv1.PullNever,
+	).WithArgs(
+		"--broker-type", "redis",
+		"--broker-addr", fmt.Sprintf("%s:%d", redis.ServiceName, redis.RedisPort),
+		"--handlers-path", "/app/handlers/compiled",
+	).WithVolumeMounts(
+		volumeMount,
+	)
+
+	return acappsv1.Deployment(
+		deploymentName, conf.Kubernetes.Namespace,
+	).WithLabels(
+		labels,
+	).WithSpec(
+		acappsv1.DeploymentSpec().WithReplicas(
+			conf.Workerpool.Replicas,
+		).WithSelector(
+			acmetav1.LabelSelector().WithMatchLabels(labels),
+		).WithTemplate(
+			accorev1.PodTemplateSpec().WithLabels(
+				labels,
+			).WithSpec(
+				accorev1.PodSpec().WithRestartPolicy(
+					apiv1.RestartPolicyAlways,
+				).WithInitContainers(
+					pluginBuilderContainer,
+				).WithContainers(
+					workerpoolContainer,
+				).WithVolumes(
+					accorev1.Volume().WithName(
+						*volumeMount.Name,
+					).WithPersistentVolumeClaim(
+						accorev1.PersistentVolumeClaimVolumeSource().WithClaimName(pvcName),
+					),
+				),
+			),
+		),
+	)
 }

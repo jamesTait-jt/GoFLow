@@ -12,7 +12,10 @@ import (
 func Destroy(conf *config.Config, logger log.Logger) error {
 	stopLog := logger.Waiting("Connecting to the Kubernetes cluster")
 
-	kubeClient, err := kubernetes.New(conf.Kubernetes.ClusterURL, logger)
+	kubeClient, err := kubernetes.New(
+		conf.Kubernetes.ClusterURL,
+		kubernetes.WithLogger(logger),
+	)
 	if err != nil {
 		stopLog("Failed connecting to kubernetes cluster", false)
 
@@ -21,19 +24,15 @@ func Destroy(conf *config.Config, logger log.Logger) error {
 
 	stopLog("Successfully connected to Kubernetes cluster", true)
 
-	stopLog = logger.Waiting(fmt.Sprintf("Destroying namespace '%s'", conf.Kubernetes.Namespace))
+	logger.Info(fmt.Sprintf("🔥 Destroying namespace '%s'", conf.Kubernetes.Namespace))
 
 	// This will delete the namespace and everything contained within
 	err = kubeClient.DestroyNamespace(conf.Kubernetes.Namespace)
 	if err != nil {
-		stopLog("Failed destroying namespace", false)
-
 		return err
 	}
 
-	stopLog("Successfully destroyed namespace", true)
-
-	stopLog = logger.Waiting("Destroying non-namespace scoped objects")
+	logger.Info("🔥 Destroying non-namespace scoped objects")
 
 	// Persistent volumes are not associated with a namespace so must be delete individually
 	err = kubeClient.DestroyPV(workerpool.HandlersPV(conf).Name)

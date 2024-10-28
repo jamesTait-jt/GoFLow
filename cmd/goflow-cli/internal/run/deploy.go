@@ -11,7 +11,7 @@ import (
 	"github.com/jamesTait-jt/goflow/pkg/log"
 )
 
-// TODO: Make this accept a deploytOpts struct or something
+// TODO: Accept a deployOpts struct or something
 func Deploy(conf *config.Config, logger log.Logger) error {
 	return deployKubernetes(conf, logger)
 }
@@ -19,7 +19,10 @@ func Deploy(conf *config.Config, logger log.Logger) error {
 func deployKubernetes(conf *config.Config, logger log.Logger) error {
 	stopLog := logger.Waiting("Connecting to the Kubernetes cluster")
 
-	kubeClient, err := kubernetes.New(conf.Kubernetes.ClusterURL, logger)
+	kubeClient, err := kubernetes.New(
+		conf.Kubernetes.ClusterURL,
+		kubernetes.WithLogger(logger),
+	)
 	if err != nil {
 		stopLog("Failed connecting to kubernetes cluster", false)
 
@@ -28,63 +31,50 @@ func deployKubernetes(conf *config.Config, logger log.Logger) error {
 
 	stopLog("Successfully connected to Kubernetes cluster", true)
 
-	logger.Info("Initialising kubernetes namespace")
+	logger.Info(fmt.Sprintf("Initialising kubernetes namespace '%s'", conf.Kubernetes.Namespace))
 
 	err = kubeClient.CreateNamespaceIfNotExists(conf.Kubernetes.Namespace)
 	if err != nil {
 		return err
 	}
 
-	stopLog = logger.Waiting("Deploying message broker")
+	kubeClient.InitialiseClients()
 
-	if err := kubeClient.CreateOrUpdateDeployment(redis.Deployment(conf)); err != nil {
-		stopLog("Failed deploying message broker", false)
+	logger.Info("Deploying message broker")
+
+	if err = kubeClient.ApplyDeployment(redis.Deployment(conf)); err != nil {
 		return err
 	}
 
 	if err = kubeClient.CreateOrUpdateService(redis.Service(conf)); err != nil {
-		stopLog("Failed deploying message broker", false)
 		return err
 	}
 
-	stopLog("Successfully deployed message broker", true)
+	logger.Info("Deploying goflow gRPC server")
 
-	stopLog = logger.Waiting("Deploying goflow gRPC server")
-
-	if err = kubeClient.CreateOrUpdateDeployment(grpcserver.Deployment(conf)); err != nil {
-		stopLog("Failed deploying gRPC server", false)
+	if err = kubeClient.ApplyDeployment(grpcserver.Deployment(conf)); err != nil {
 		return err
 	}
 
 	if err = kubeClient.CreateOrUpdateService(grpcserver.Service(conf)); err != nil {
-		stopLog("Failed deploying gRPC server", false)
 		return err
 	}
 
-	stopLog("Successfully deployed gRPC server", true)
-
-	stopLog = logger.Waiting("Uploading plugins")
+	logger.Info("Uploading plugins")
 
 	if err = kubeClient.CreatePV(workerpool.HandlersPV(conf)); err != nil {
-		stopLog("Failed uploading plugins", false)
 		return err
 	}
 
 	if err = kubeClient.CreatePVC(workerpool.HandlersPVC(conf)); err != nil {
-		stopLog("Failed uploading plugins", false)
 		return err
 	}
 
-	stopLog("Successfully uploaded plugins", true)
+	logger.Info("Deploying workerpools")
 
-	stopLog = logger.Waiting("Deploying workerpools")
-
-	if err = kubeClient.CreateOrUpdateDeployment(workerpool.Deployment(conf)); err != nil {
-		stopLog("Failed deploying workerpools", false)
+	if err = kubeClient.ApplyDeployment(workerpool.Deployment(conf)); err != nil {
 		return err
 	}
-
-	stopLog("Susccessfully deployed workerpools", true)
 
 	logger.Success(
 		fmt.Sprintf(
