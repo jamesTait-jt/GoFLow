@@ -1,38 +1,25 @@
 package run
 
 import (
-	"fmt"
-
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/docker"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/workerpool"
 )
 
-func Destroy() error {
-	dockerClient, err := docker.New()
+func Destroy(conf *config.Config) error {
+	kubeClient, err := kubernetes.New(conf.Kubernetes.ClusterURL, nil)
 	if err != nil {
-		return fmt.Errorf("error creating Docker client: %v", err)
-	}
-	defer dockerClient.Close()
-
-	for _, containerID := range []string{
-		config.RedisContainerName,
-		config.WorkerpoolContainerName,
-		config.GoflowContainerName,
-	} {
-		fmt.Printf("Destroying container '%s'\n", containerID)
-
-		if err = dockerClient.DestroyContainer(containerID); err != nil {
-			return fmt.Errorf("failed to destroy container '%s': %v", containerID, err)
-		}
+		return err
 	}
 
-	fmt.Println("Destroying Docker network...")
-
-	if err = dockerClient.DestroyNetwork(config.DockerNetworkID); err != nil {
-		return fmt.Errorf("failed to destroy network '%s': %v", config.DockerNetworkID, err)
+	// This will delete the namespace and everything contained within
+	err = kubeClient.DestroyNamespace(conf.Kubernetes.Namespace)
+	if err != nil {
+		return err
 	}
 
-	fmt.Println("Done!")
+	// Persistent volumes are not associated with a namespace so must be delete individually
+	err = kubeClient.DestroyPV(workerpool.HandlersPV(conf).Name)
 
-	return nil
+	return err
 }

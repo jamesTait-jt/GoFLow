@@ -12,7 +12,7 @@ var confPath string
 var rootCmd = &cobra.Command{
 	Use:   "goflow",
 	Short: "Goflow CLI tool to deploy workerpool and plugins using Docker",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 		err := config.Load(confPath)
 		if err != nil {
 			return err
