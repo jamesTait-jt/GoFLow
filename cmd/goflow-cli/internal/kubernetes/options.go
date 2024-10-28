@@ -28,7 +28,7 @@ func (c configBuilderOption) apply(opts *options) {
 	opts.configBuilder = c.ConfigBuilder
 }
 
-func WithResultsStore(configBuilder kubeConfigBuilder) Option {
+func WithConfigBuilder(configBuilder kubeConfigBuilder) Option {
 	return configBuilderOption{ConfigBuilder: configBuilder}
 }
 
