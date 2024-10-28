@@ -12,6 +12,7 @@ import (
 
 type Logger interface {
 	Info(msg string)
+	Success(msg string)
 	Warn(msg string)
 	Error(msg string)
 	Waiting(msg string) func(doneMsg string, success bool)
@@ -29,6 +30,11 @@ func NewConsoleLogger() *ConsoleLogger {
 
 func (c *ConsoleLogger) Info(msg string) {
 	info := color.New(color.FgCyan).Sprintf("[INFO]: %s", msg)
+	c.logger.Println(info)
+}
+
+func (c *ConsoleLogger) Success(msg string) {
+	info := color.New(color.FgGreen).Sprintf("[INFO]: ✅ %s", msg)
 	c.logger.Println(info)
 }
 
@@ -53,7 +59,7 @@ func (c *ConsoleLogger) Waiting(msg string) func(doneMsg string, success bool) {
 		s.Stop()
 
 		if success {
-			c.logger.Println(color.New(color.FgGreen).Sprintf("[INFO]: ✅ %s", doneMsg))
+			c.Success(doneMsg)
 		} else {
 			c.logger.Println(color.New(color.FgRed).Sprintf("[INFO]: ❌ %s", doneMsg))
 		}

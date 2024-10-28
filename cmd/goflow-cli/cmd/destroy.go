@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/run"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +16,9 @@ var destroyCmd = &cobra.Command{
 			return err
 		}
 
-		return run.Destroy(conf)
+		logger := log.NewConsoleLogger()
+
+		return run.Destroy(conf, logger)
 	},
 }
 

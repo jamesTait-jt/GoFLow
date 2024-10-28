@@ -17,63 +17,80 @@ func Deploy(conf *config.Config, logger log.Logger) error {
 }
 
 func deployKubernetes(conf *config.Config, logger log.Logger) error {
-	logger.Info("🟢 Connecting to the Kubernetes cluster...")
+	stopLog := logger.Waiting("Connecting to the Kubernetes cluster")
 
 	kubeClient, err := kubernetes.New(conf.Kubernetes.ClusterURL, logger)
 	if err != nil {
+		stopLog("Failed connecting to kubernetes cluster", false)
+
 		return err
 	}
 
-	logger.Info("✅ Successfully connected to Kubernetes cluster")
+	stopLog("Successfully connected to Kubernetes cluster", true)
 
-	logger.Info("🏗️ Initialising kubernetes namespace...")
+	logger.Info("Initialising kubernetes namespace")
 
 	err = kubeClient.CreateNamespaceIfNotExists(conf.Kubernetes.Namespace)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Created namespace '%s'\n", conf.Kubernetes.Namespace)
-
-	fmt.Println("Starting Redis...")
+	stopLog = logger.Waiting("Deploying message broker")
 
 	if err := kubeClient.CreateOrUpdateDeployment(redis.Deployment(conf)); err != nil {
+		stopLog("Failed deploying message broker", false)
 		return err
 	}
 
 	if err = kubeClient.CreateOrUpdateService(redis.Service(conf)); err != nil {
+		stopLog("Failed deploying message broker", false)
 		return err
 	}
 
-	fmt.Println("Starting goflow gRPC service...")
+	stopLog("Successfully deployed message broker", true)
+
+	stopLog = logger.Waiting("Deploying goflow gRPC server")
 
 	if err = kubeClient.CreateOrUpdateDeployment(grpcserver.Deployment(conf)); err != nil {
+		stopLog("Failed deploying gRPC server", false)
 		return err
 	}
 
 	if err = kubeClient.CreateOrUpdateService(grpcserver.Service(conf)); err != nil {
+		stopLog("Failed deploying gRPC server", false)
 		return err
 	}
 
-	fmt.Println("Uploading plugins...")
+	stopLog("Successfully deployed gRPC server", true)
+
+	stopLog = logger.Waiting("Uploading plugins")
 
 	if err = kubeClient.CreatePV(workerpool.HandlersPV(conf)); err != nil {
+		stopLog("Failed uploading plugins", false)
 		return err
 	}
 
 	if err = kubeClient.CreatePVC(workerpool.HandlersPVC(conf)); err != nil {
+		stopLog("Failed uploading plugins", false)
 		return err
 	}
 
-	fmt.Println("Starting workerpool...")
+	stopLog("Successfully uploaded plugins", true)
+
+	stopLog = logger.Waiting("Deploying workerpools")
 
 	if err = kubeClient.CreateOrUpdateDeployment(workerpool.Deployment(conf)); err != nil {
+		stopLog("Failed deploying workerpools", false)
 		return err
 	}
 
-	fmt.Printf(
-		"GoFlow deployed! Use `kubectl get pods -n %s` to see the status of the application\n",
-		conf.Kubernetes.Namespace,
+	stopLog("Susccessfully deployed workerpools", true)
+
+	logger.Success(
+		fmt.Sprintf(
+			"GoFlow deployed! Use `kubectl get pods -n %s` to see the status of the application",
+			conf.Kubernetes.Namespace,
+		),
 	)
 
 	return nil

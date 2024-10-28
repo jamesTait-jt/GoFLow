@@ -63,14 +63,14 @@ func (k *KubeClient) CreateOrUpdateDeployment(deployment *appsv1.Deployment) err
 		return err
 	}
 
-	fmt.Println("Deployment existed - replacing")
+	// fmt.Println("Deployment existed - replacing")
 
 	_, err = deploymentsClient.Update(k.ctx, deployment, metav1.UpdateOptions{})
 	if err != nil {
 		return nil
 	}
 
-	fmt.Println("Deployment replaced successfully!")
+	// fmt.Println("Deployment replaced successfully!")
 
 	return err
 }
@@ -81,13 +81,13 @@ func (k *KubeClient) CreateOrUpdateService(service *apiv1.Service) error {
 	_, err := servicesClient.Get(k.ctx, service.Name, metav1.GetOptions{})
 
 	if err == nil {
-		fmt.Println("Service existed - replacing")
+		// fmt.Println("Service existed - replacing")
 
 		if _, err = servicesClient.Update(k.ctx, service, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 
-		fmt.Println("Service replaced successfully!")
+		// fmt.Println("Service replaced successfully!")
 
 		return nil
 	}
@@ -140,13 +140,11 @@ func (k *KubeClient) CreatePVC(pvc *apiv1.PersistentVolumeClaim) error {
 func (k *KubeClient) CreateNamespaceIfNotExists(namespace string) error {
 	namespacesClient := k.client.CoreV1().Namespaces()
 
-	k.logger.Info(fmt.Sprintf("🔍 Checking if namespace '%s' exists...", namespace))
-
 	_, err := namespacesClient.Get(k.ctx, namespace, metav1.GetOptions{})
 	if err == nil {
 		k.namespace = namespace
 
-		k.logger.Info(fmt.Sprintf("✅ Namespace '%s' already exists; proceeding with deployment.", namespace))
+		k.logger.Success(fmt.Sprintf("Namespace '%s' already exists; proceeding with deployment.", namespace))
 
 		return nil
 	}
@@ -161,7 +159,7 @@ func (k *KubeClient) CreateNamespaceIfNotExists(namespace string) error {
 		},
 	}
 
-	stopLog := k.logger.Waiting(fmt.Sprintf("Creating namespace '%s'...", namespace))
+	stopLog := k.logger.Waiting(fmt.Sprintf("Creating namespace '%s'", namespace))
 
 	_, err = namespacesClient.Create(k.ctx, namespaceObject, metav1.CreateOptions{})
 	if err != nil {
@@ -202,9 +200,6 @@ type watchable interface {
 }
 
 func (k *KubeClient) waitFor(resourceName, namespace string, eventType watch.EventType, client watchable) error {
-	fmt.Println("waiting...")
-	fmt.Println(resourceName, namespace)
-
 	// This won't be populated if we're destroying or creating a namespace
 	var fieldSelector string
 	if namespace != "" {
