@@ -2,9 +2,7 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	appsv1 "k8s.io/api/apps/v1"
@@ -13,9 +11,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/rest"
 )
+
+type kubeConfigBuilder interface {
+	GetKubeConfigPath() (string, error)
+	BuildConfig(clusterURL, kubeConfigPath string) (*rest.Config, error)
+}
+
+type kubeClientBuilder interface {
+	NewForConfig(config *rest.Config) (*kubernetes.Clientset, error)
+}
 
 type KubeClient struct {
 	ctx       context.Context
@@ -24,20 +30,24 @@ type KubeClient struct {
 	logger    log.Logger
 }
 
-func New(clusterURL string, logger log.Logger) (*KubeClient, error) {
-	var kubeConfPath string
-	if home := homedir.HomeDir(); home != "" {
-		kubeConfPath = filepath.Join(home, ".kube", "config")
-	} else {
-		return nil, errors.New("could not find .kube/config file in home directory")
+func New(clusterURL string, opts ...Option) (*KubeClient, error) {
+	options := defaultOptions()
+
+	for _, o := range opts {
+		o.apply(&options)
 	}
 
-	kubeConf, err := clientcmd.BuildConfigFromFlags(clusterURL, kubeConfPath)
+	kubeConfigPath, err := options.configBuilder.GetKubeConfigPath()
 	if err != nil {
 		return nil, err
 	}
 
-	clientset, err := kubernetes.NewForConfig(kubeConf)
+	kubeConfig, err := options.configBuilder.BuildConfig(clusterURL, kubeConfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := options.kubeClientBuilder.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +55,7 @@ func New(clusterURL string, logger log.Logger) (*KubeClient, error) {
 	client := &KubeClient{
 		ctx:    context.Background(),
 		client: clientset,
-		logger: logger,
+		logger: options.logger,
 	}
 
 	return client, nil
