@@ -1,4 +1,4 @@
-package kubernetes
+package resource
 
 import (
 	"context"
@@ -15,6 +15,10 @@ type Waiter struct {
 	logger log.Logger
 }
 
+type Watchable interface {
+	Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error)
+}
+
 func NewWaiter(ctx context.Context, logger log.Logger) *Waiter {
 	return &Waiter{ctx: ctx, logger: logger}
 }
@@ -22,7 +26,7 @@ func NewWaiter(ctx context.Context, logger log.Logger) *Waiter {
 func (w *Waiter) WaitFor(
 	resourceName, namespace string,
 	eventTypes []watch.EventType,
-	client watchable,
+	client Watchable,
 ) error {
 	stopLog := w.logger.Waiting(fmt.Sprintf("Waiting for event of type %v from '%s'", eventTypes, resourceName))
 

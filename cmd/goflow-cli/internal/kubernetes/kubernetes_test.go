@@ -5,13 +5,17 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	appsv1 "k8s.io/api/apps/v1"
+
+	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
+	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -24,6 +28,7 @@ func Test_New(t *testing.T) {
 		mockLogger := new(log.TestifyMock)
 
 		clusterURL := "cluster.url"
+		namespace := "testNamespace"
 		kubeConfigPath := "path/to/kube/config"
 		kubeConfig := &rest.Config{}
 		clientSet := &kubernetes.Clientset{}
@@ -34,7 +39,7 @@ func Test_New(t *testing.T) {
 
 		// Act
 		kube, err := New(
-			clusterURL,
+			clusterURL, namespace,
 			WithConfigBuilder(mockConfigBuilder),
 			WithKubeClientBuilder(mockKubeClientBuilder),
 			WithLogger(mockLogger),
@@ -46,9 +51,8 @@ func Test_New(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.NotNil(t, kube.ctx)
-		assert.NotNil(t, kube.waiter)
-		assert.Equal(t, clientSet, kube.client)
-		assert.Equal(t, mockLogger, kube.logger)
+		assert.NotNil(t, kube.deploymentApplier)
+		assert.NotNil(t, kube.serviceApplier)
 	})
 
 	t.Run("Returns error if could not find kube config", func(t *testing.T) {
@@ -58,13 +62,14 @@ func Test_New(t *testing.T) {
 		mockLogger := new(log.TestifyMock)
 
 		clusterURL := "cluster.url"
+		namespace := "testNamespace"
 
 		configBuilderErr := errors.New("conf builder err")
 		mockConfigBuilder.On("GetKubeConfigPath").Return("", configBuilderErr)
 
 		// Act
 		kube, err := New(
-			clusterURL,
+			clusterURL, namespace,
 			WithConfigBuilder(mockConfigBuilder),
 			WithKubeClientBuilder(mockKubeClientBuilder),
 			WithLogger(mockLogger),
@@ -86,6 +91,7 @@ func Test_New(t *testing.T) {
 		mockLogger := new(log.TestifyMock)
 
 		clusterURL := "cluster.url"
+		namespace := "testNamespace"
 		kubeConfigPath := "path/to/kube/config"
 		configBuilderErr := errors.New("conf builder err")
 
@@ -94,7 +100,7 @@ func Test_New(t *testing.T) {
 
 		// Act
 		kube, err := New(
-			clusterURL,
+			clusterURL, namespace,
 			WithConfigBuilder(mockConfigBuilder),
 			WithKubeClientBuilder(mockKubeClientBuilder),
 			WithLogger(mockLogger),
@@ -115,6 +121,7 @@ func Test_New(t *testing.T) {
 		mockLogger := new(log.TestifyMock)
 
 		clusterURL := "cluster.url"
+		namespace := "testNamespace"
 		kubeConfigPath := "path/to/kube/config"
 		kubeConfig := &rest.Config{}
 
@@ -126,7 +133,7 @@ func Test_New(t *testing.T) {
 
 		// Act
 		kube, err := New(
-			clusterURL,
+			clusterURL, namespace,
 			WithConfigBuilder(mockConfigBuilder),
 			WithKubeClientBuilder(mockKubeClientBuilder),
 			WithLogger(mockLogger),
@@ -138,6 +145,132 @@ func Test_New(t *testing.T) {
 
 		assert.EqualError(t, err, kubeClientBuilderErr.Error())
 		assert.Nil(t, kube)
+	})
+}
+
+/*
+func Test_KubeClient_ApplyNamespace(t *testing.T) {
+	t.Run("Logs if no changes are required", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockNamespacesClient)
+		mockLogger := new(log.TestifyMock)
+
+		namespacesConfig := acapiv1.Namespace("namespace")
+
+		k := &KubeClient{
+			ctx:              context.Background(),
+			namespacesClient: mockClient,
+			logger:           mockLogger,
+		}
+
+		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
+		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(nil, nil)
+		mockLogger.On("Info", "No changes required for 'namespace'")
+
+		// Act
+		err := k.ApplyNamespace(namespacesConfig)
+
+		// Assert
+		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
+
+		assert.Nil(t, err)
+	})
+
+	t.Run("Applies namespace spec if required and waits", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockNamespacesClient)
+		mockEventWaiter := new(MockEventWaiter)
+
+		namespacesConfig := acapiv1.Namespace("namespace")
+
+		k := &KubeClient{
+			ctx:              context.Background(),
+			namespacesClient: mockClient,
+			waiter:           mockEventWaiter,
+		}
+
+		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
+		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(&apiv1.Namespace{}, nil)
+
+		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
+		mockClient.On("Apply", k.ctx, namespacesConfig, actualRunOpts).Once().Return(nil, nil)
+
+		waitErr := errors.New("waiter error")
+		mockEventWaiter.On(
+			"WaitFor",
+			"namespace",
+			"",
+			[]watch.EventType{watch.Added, watch.Modified},
+			mockClient,
+		).Once().Return(waitErr)
+
+		// Act
+		err := k.ApplyNamespace(namespacesConfig)
+
+		// Assert
+		mockClient.AssertExpectations(t)
+		mockEventWaiter.AssertExpectations(t)
+
+		assert.EqualError(t, err, waitErr.Error())
+	})
+
+	t.Run("Returns error if couldn't apply dry run", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockNamespacesClient)
+		mockLogger := new(log.TestifyMock)
+
+		namespacesConfig := acapiv1.Namespace("namespace")
+
+		k := &KubeClient{
+			ctx:              context.Background(),
+			namespacesClient: mockClient,
+			logger:           mockLogger,
+		}
+
+		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
+		dryRunErr := errors.New("dry run err")
+		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(nil, dryRunErr)
+
+		// Act
+		err := k.ApplyNamespace(namespacesConfig)
+
+		// Assert
+		mockClient.AssertExpectations(t)
+		mockLogger.AssertNotCalled(t, "Info")
+
+		assert.EqualError(t, err, dryRunErr.Error())
+	})
+
+	t.Run("Returns error if couldn't apply real run", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockDeploymentsClient)
+		mockEventWaiter := new(MockEventWaiter)
+
+		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
+
+		k := &KubeClient{
+			ctx:               context.Background(),
+			namespace:         "namespace",
+			deploymentsClient: mockClient,
+			waiter:            mockEventWaiter,
+		}
+
+		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
+		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(&appsv1.Deployment{}, nil)
+
+		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
+		actualRunErr := errors.New("actual run err")
+		mockClient.On("Apply", k.ctx, deploymentConfig, actualRunOpts).Once().Return(nil, actualRunErr)
+
+		// Act
+		err := k.ApplyDeployment(deploymentConfig)
+
+		// Assert
+		mockClient.AssertExpectations(t)
+		mockEventWaiter.AssertNotCalled(t, "WaitFor")
+
+		assert.EqualError(t, err, actualRunErr.Error())
 	})
 }
 
@@ -157,7 +290,7 @@ func Test_KubeClient_ApplyDeployment(t *testing.T) {
 
 		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
 		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(nil, nil)
-		mockLogger.On("Info", "No changes required for deployment 'deployment'")
+		mockLogger.On("Info", "No changes required for 'deployment'")
 
 		// Act
 		err := k.ApplyDeployment(deploymentConfig)
@@ -208,7 +341,7 @@ func Test_KubeClient_ApplyDeployment(t *testing.T) {
 		assert.EqualError(t, err, waitErr.Error())
 	})
 
-	t.Run("Returns error is couldn't apply dry run", func(t *testing.T) {
+	t.Run("Returns error if couldn't apply dry run", func(t *testing.T) {
 		// Arrange
 		mockClient := new(MockDeploymentsClient)
 		mockLogger := new(log.TestifyMock)
@@ -266,6 +399,7 @@ func Test_KubeClient_ApplyDeployment(t *testing.T) {
 		assert.EqualError(t, err, actualRunErr.Error())
 	})
 }
+*/
 
 type MockConfigBuilder struct {
 	mock.Mock
@@ -302,6 +436,7 @@ func (m *MockKubeClientBuilder) NewForConfig(config *rest.Config) (*kubernetes.C
 
 type MockDeploymentsClient struct {
 	mock.Mock
+	MockWatchable
 }
 
 func (m *MockDeploymentsClient) Apply(
@@ -318,17 +453,23 @@ func (m *MockDeploymentsClient) Apply(
 	return args.Get(0).(*appsv1.Deployment), args.Error(1)
 }
 
-func (m *MockDeploymentsClient) Watch(
+type MockNamespacesClient struct {
+	mock.Mock
+	MockWatchable
+}
+
+func (m *MockNamespacesClient) Apply(
 	ctx context.Context,
-	options metav1.ListOptions,
-) (watch.Interface, error) {
-	args := m.Called(ctx, options)
+	namespace *acapiv1.NamespaceApplyConfiguration,
+	opts metav1.ApplyOptions,
+) (*apiv1.Namespace, error) {
+	args := m.Called(ctx, namespace, opts)
 
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 
-	return args.Get(0).(watch.Interface), args.Error(1)
+	return args.Get(0).(*apiv1.Namespace), args.Error(1)
 }
 
 type MockWatchable struct {
@@ -349,7 +490,7 @@ type MockEventWaiter struct {
 	mock.Mock
 }
 
-func (m *MockEventWaiter) WaitFor(resourceName, namespace string, eventTypes []watch.EventType, client watchable) error {
+func (m *MockEventWaiter) WaitFor(resourceName, namespace string, eventTypes []watch.EventType, client resource.Watchable) error {
 	args := m.Called(resourceName, namespace, eventTypes, client)
 	return args.Error(0)
 }

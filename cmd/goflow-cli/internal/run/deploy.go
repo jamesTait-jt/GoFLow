@@ -17,28 +17,22 @@ func Deploy(conf *config.Config, logger log.Logger) error {
 }
 
 func deployKubernetes(conf *config.Config, logger log.Logger) error {
-	stopLog := logger.Waiting("Connecting to the Kubernetes cluster")
+	logger.Info("Connecting to the Kubernetes cluster")
 
 	kubeClient, err := kubernetes.New(
 		conf.Kubernetes.ClusterURL,
+		conf.Kubernetes.Namespace,
 		kubernetes.WithLogger(logger),
 	)
 	if err != nil {
-		stopLog("Failed connecting to kubernetes cluster", false)
-
 		return err
 	}
 
-	stopLog("Successfully connected to Kubernetes cluster", true)
-
-	logger.Info(fmt.Sprintf("Initialising kubernetes namespace '%s'", conf.Kubernetes.Namespace))
-
-	err = kubeClient.CreateNamespaceIfNotExists(conf.Kubernetes.Namespace)
-	if err != nil {
-		return err
-	}
-
-	kubeClient.InitialiseClients()
+	// logger.Info(fmt.Sprintf("Initialising namespace '%s'", conf.Kubernetes.Namespace))
+	//
+	// if err = kubeClient.ApplyNamespace(conf.Kubernetes.Namespace); err != nil {
+	// 	return err
+	// }
 
 	logger.Info("Deploying message broker")
 
@@ -46,7 +40,7 @@ func deployKubernetes(conf *config.Config, logger log.Logger) error {
 		return err
 	}
 
-	if err = kubeClient.CreateOrUpdateService(redis.Service(conf)); err != nil {
+	if err = kubeClient.ApplyService(redis.Service(conf)); err != nil {
 		return err
 	}
 
@@ -56,17 +50,17 @@ func deployKubernetes(conf *config.Config, logger log.Logger) error {
 		return err
 	}
 
-	if err = kubeClient.CreateOrUpdateService(grpcserver.Service(conf)); err != nil {
+	if err = kubeClient.ApplyService(grpcserver.Service(conf)); err != nil {
 		return err
 	}
 
 	logger.Info("Uploading plugins")
 
-	if err = kubeClient.CreatePV(workerpool.HandlersPV(conf)); err != nil {
+	if err = kubeClient.ApplyPV(workerpool.HandlersPV(conf)); err != nil {
 		return err
 	}
 
-	if err = kubeClient.CreatePVC(workerpool.HandlersPVC(conf)); err != nil {
+	if err = kubeClient.ApplyPVC(workerpool.HandlersPVC(conf)); err != nil {
 		return err
 	}
 

@@ -3,10 +3,9 @@ package grpcserver
 import (
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
-	accorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 	acmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
@@ -32,18 +31,18 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 		).WithSelector(
 			acmetav1.LabelSelector().WithMatchLabels(labels),
 		).WithTemplate(
-			accorev1.PodTemplateSpec().WithLabels(
+			acapiv1.PodTemplateSpec().WithLabels(
 				labels,
 			).WithSpec(
-				accorev1.PodSpec().WithContainers(
-					accorev1.Container().WithName(
+				acapiv1.PodSpec().WithContainers(
+					acapiv1.Container().WithName(
 						deploymentContainerName,
 					).WithImage(
 						conf.GoFlowServer.Image,
 					).WithImagePullPolicy(
 						apiv1.PullNever,
 					).WithPorts(
-						accorev1.ContainerPort().WithProtocol(
+						acapiv1.ContainerPort().WithProtocol(
 							apiv1.ProtocolTCP,
 						).WithContainerPort(
 							grpcPort,
@@ -55,23 +54,24 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 	)
 }
 
-func Service(conf *config.Config) *apiv1.Service {
-	return &apiv1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName,
-			Labels:    labels,
-			Namespace: conf.Kubernetes.Namespace,
-		},
-		Spec: apiv1.ServiceSpec{
-			Selector:       labels,
-			Type:           apiv1.ServiceTypeLoadBalancer,
-			LoadBalancerIP: conf.GoFlowServer.Address,
-			Ports: []apiv1.ServicePort{
-				{
-					Port:       grpcPort,
-					TargetPort: intstr.FromInt32(grpcPort),
-				},
-			},
-		},
-	}
+func Service(conf *config.Config) *acapiv1.ServiceApplyConfiguration {
+	return acapiv1.Service(
+		serviceName, conf.Kubernetes.Namespace,
+	).WithLabels(
+		labels,
+	).WithSpec(
+		acapiv1.ServiceSpec().WithSelector(
+			labels,
+		).WithType(
+			apiv1.ServiceTypeLoadBalancer,
+		).WithLoadBalancerIP(
+			conf.GoFlowServer.Address,
+		).WithPorts(
+			acapiv1.ServicePort().WithPort(
+				grpcPort,
+			).WithTargetPort(
+				intstr.FromInt32(grpcPort),
+			),
+		),
+	)
 }
