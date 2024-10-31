@@ -49,6 +49,7 @@ func (w *Waiter) WaitFor(
 
 	for event := range watcher.ResultChan() {
 		if slice.Contains(eventTypes, event.Type) {
+			w.logger.Info(fmt.Sprintf("%v", event))
 			stopLog(fmt.Sprintf("Found event of type '%v'", event.Type), true)
 
 			return nil

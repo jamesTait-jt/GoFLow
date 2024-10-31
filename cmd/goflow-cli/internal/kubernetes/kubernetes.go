@@ -2,14 +2,18 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type kubeConfigBuilder interface {
@@ -21,31 +25,18 @@ type kubeClientBuilder interface {
 	NewForConfig(config *rest.Config) (*kubernetes.Clientset, error)
 }
 
-type applyConfiguration interface {
-	*acapiv1.NamespaceApplyConfiguration |
-		*acappsv1.DeploymentApplyConfiguration |
-		*acapiv1.ServiceApplyConfiguration |
-		*acapiv1.PersistentVolumeApplyConfiguration |
-		*acapiv1.PersistentVolumeClaimApplyConfiguration
-}
-
-type resourceApplier[C applyConfiguration] interface {
+type resourceApplier[A resource.Appliable] interface {
 	Apply(
 		ctx context.Context,
-		client resource.ApplyWatchable[C, any],
-		config C,
-		namespace string,
-		logger log.Logger,
-		waiter resource.EventWaiter,
-	) error
+		toApply A,
+	) (bool, error)
 }
 
 type KubeClient struct {
-	ctx               context.Context
-	clientset         kubernetes.Interface
-	namespace         string
-	logger            log.Logger
-	waiter            resource.EventWaiter
+	ctx    context.Context
+	logger log.Logger
+	// waiter            resource.EventWaiter
+	speccer           resource.Speccer
 	namespaceApplier  resourceApplier[*acapiv1.NamespaceApplyConfiguration]
 	deploymentApplier resourceApplier[*acappsv1.DeploymentApplyConfiguration]
 	serviceApplier    resourceApplier[*acapiv1.ServiceApplyConfiguration]
@@ -54,13 +45,11 @@ type KubeClient struct {
 }
 
 func New(
-	clusterURL string,
-	namespace string,
 	namespaceApplier resourceApplier[*acapiv1.NamespaceApplyConfiguration],
 	deploymentApplier resourceApplier[*acappsv1.DeploymentApplyConfiguration],
 	serviceApplier resourceApplier[*acapiv1.ServiceApplyConfiguration],
-	pvApplier resourceApplier[*acapiv1.PersistentVolumeApplyConfiguration],
-	pvcApplier resourceApplier[*acapiv1.PersistentVolumeClaimApplyConfiguration],
+	// pvApplier resourceApplier[*acapiv1.PersistentVolumeApplyConfiguration],
+	// pvcApplier resourceApplier[*acapiv1.PersistentVolumeClaimApplyConfiguration],
 	opts ...Option,
 ) (*KubeClient, error) {
 	options := defaultOptions()
@@ -69,57 +58,130 @@ func New(
 		o.apply(&options)
 	}
 
-	kubeConfigPath, err := options.configBuilder.GetKubeConfigPath()
-	if err != nil {
-		return nil, err
-	}
+	// kubeConfigPath, err := options.configBuilder.GetKubeConfigPath()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	kubeConfig, err := options.configBuilder.BuildConfig(clusterURL, kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
+	// kubeConfig, err := options.configBuilder.BuildConfig(clusterURL, kubeConfigPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	clientset, err := options.kubeClientBuilder.NewForConfig(kubeConfig)
-	if err != nil {
-		return nil, err
-	}
+	// clientset, err := options.kubeClientBuilder.NewForConfig(kubeConfig)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	ctx := context.Background()
 
-	eventWaiter := resource.NewWaiter(ctx, options.logger)
+	// eventWaiter := resource.NewWaiter(ctx, options.logger)
 
 	client := &KubeClient{
-		ctx:               ctx,
-		clientset:         clientset,
-		namespace:         namespace,
-		logger:            options.logger,
-		waiter:            eventWaiter,
+		ctx:    ctx,
+		logger: options.logger,
+		// waiter:           eventWaiter,
+		speccer:           &resource.ObjectSpeccer{},
 		namespaceApplier:  namespaceApplier,
 		deploymentApplier: deploymentApplier,
 		serviceApplier:    serviceApplier,
-		pvApplier:         pvApplier,
-		pvcApplier:        pvcApplier,
+		// pvApplier:         pvApplier,
+		// pvcApplier:        pvcApplier,
 	}
 
 	return client, nil
 }
 
-func (k *KubeClient) ApplyDeployment(deploymentConfig *acappsv1.DeploymentApplyConfiguration) error {
-	deployments := k.clientset.AppsV1().Deployments(k.namespace)
-	return k.deploymentApplier.Apply(k.ctx, deployments, deploymentConfig, k.namespace, k.logger, k.waiter)
+type kubeResource interface {
+	Apply(ctx context.Context, opts metav1.ApplyOptions) (runtime.Object, error)
+	Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error)
 }
 
-func (k *KubeClient) ApplyService(serviceConfig *acapiv1.ServiceApplyConfiguration) error {
-	return k.serviceApplier.Apply(k.ctx, serviceConfig, k.namespace, k.logger, k.waiter)
+func (k *KubeClient) Apply(r kubeResource) (bool, error) {
+	currDeployment, err := r.Get(
+		k.ctx,
+		metav1.GetOptions{},
+	)
+
+	if err != nil && !k8serr.IsNotFound(err) {
+		return false, err
+	}
+
+	proposedDeployment, err := r.Apply(
+		k.ctx,
+		metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
+	)
+
+	currSpec, err := k.speccer.Spec(currDeployment)
+	if err != nil {
+		return false, err
+	}
+
+	proposedSpec, err := k.speccer.Spec(proposedDeployment)
+	if err != nil {
+		return false, err
+	}
+
+	// new deployment is the same as the old deployment
+	if reflect.DeepEqual(currSpec, proposedSpec) {
+		return false, nil
+	}
+
+	_, err = r.Apply(
+		k.ctx,
+		metav1.ApplyOptions{FieldManager: "goflow-cli"},
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, err
 }
 
-func (k *KubeClient) ApplyPV(pvConfig *acapiv1.PersistentVolumeApplyConfiguration) error {
-	return k.pvApplier.Apply(k.ctx, pvConfig, k.namespace, k.logger, k.waiter)
+func (k *KubeClient) ApplyNamespace(namespace *acapiv1.NamespaceApplyConfiguration) error {
+	neededUpdate, err := k.namespaceApplier.Apply(k.ctx, namespace)
+
+	if err != nil {
+		return err
+	}
+
+	k.logger.Info(fmt.Sprintf("%s", neededUpdate))
+
+	return nil
 }
 
-func (k *KubeClient) ApplyPVC(pvcConfig *acapiv1.PersistentVolumeClaimApplyConfiguration) error {
-	return k.pvcApplier.Apply(k.ctx, pvcConfig, k.namespace, k.logger, k.waiter)
+func (k *KubeClient) ApplyDeployment(deployment *acappsv1.DeploymentApplyConfiguration) error {
+	neededUpdate, err := k.deploymentApplier.Apply(k.ctx, deployment)
+
+	if err != nil {
+		return err
+	}
+
+	k.logger.Info(fmt.Sprintf("%s", neededUpdate))
+
+	return nil
 }
+
+func (k *KubeClient) ApplyService(service *acapiv1.ServiceApplyConfiguration) error {
+	neededUpdate, err := k.serviceApplier.Apply(k.ctx, service)
+
+	if err != nil {
+		return err
+	}
+
+	k.logger.Info(fmt.Sprintf("%s", neededUpdate))
+
+	return nil
+}
+
+// func (k *KubeClient) ApplyPV(pvConfig *acapiv1.PersistentVolumeApplyConfiguration) error {
+// 	return k.pvApplier.Apply(k.ctx, pvConfig, k.namespace, k.logger, k.waiter)
+// }
+
+// func (k *KubeClient) ApplyPVC(pvcConfig *acapiv1.PersistentVolumeClaimApplyConfiguration) error {
+// 	return k.pvcApplier.Apply(k.ctx, pvcConfig, k.namespace, k.logger, k.waiter)
+// }
 
 // func (k *KubeClient) DestroyNamespace(namespace string) error {
 // 	namespacesClient := k.client.CoreV1().Namespaces()

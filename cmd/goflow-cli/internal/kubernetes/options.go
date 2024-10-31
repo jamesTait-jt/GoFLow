@@ -7,42 +7,42 @@ type Option interface {
 }
 
 type options struct {
-	configBuilder     kubeConfigBuilder
-	kubeClientBuilder kubeClientBuilder
-	logger            log.Logger
+	// configBuilder     kubeConfigBuilder
+	// kubeClientBuilder kubeClientBuilder
+	logger log.Logger
 }
 
 func defaultOptions() options {
 	return options{
-		configBuilder:     &KubeConfigBuilder{},
-		kubeClientBuilder: &KubeClientBuilder{},
-		logger:            log.NewConsoleLogger(),
+		// configBuilder:     &KubeConfigBuilder{},
+		// kubeClientBuilder: &KubeClientBuilder{},
+		logger: log.NewConsoleLogger(),
 	}
 }
 
-type configBuilderOption struct {
-	ConfigBuilder kubeConfigBuilder
-}
+// type configBuilderOption struct {
+// 	ConfigBuilder kubeConfigBuilder
+// }
 
-func (c configBuilderOption) apply(opts *options) {
-	opts.configBuilder = c.ConfigBuilder
-}
+// func (c configBuilderOption) apply(opts *options) {
+// 	opts.configBuilder = c.ConfigBuilder
+// }
 
-func WithConfigBuilder(configBuilder kubeConfigBuilder) Option {
-	return configBuilderOption{ConfigBuilder: configBuilder}
-}
+// func WithConfigBuilder(configBuilder kubeConfigBuilder) Option {
+// 	return configBuilderOption{ConfigBuilder: configBuilder}
+// }
 
-type kubeClientBuilderOption struct {
-	KubeClientBuilder kubeClientBuilder
-}
+// type kubeClientBuilderOption struct {
+// 	KubeClientBuilder kubeClientBuilder
+// }
 
-func (k kubeClientBuilderOption) apply(opts *options) {
-	opts.kubeClientBuilder = k.KubeClientBuilder
-}
+// func (k kubeClientBuilderOption) apply(opts *options) {
+// 	opts.kubeClientBuilder = k.KubeClientBuilder
+// }
 
-func WithKubeClientBuilder(kubeClientBuilder kubeClientBuilder) Option {
-	return kubeClientBuilderOption{KubeClientBuilder: kubeClientBuilder}
-}
+// func WithKubeClientBuilder(kubeClientBuilder kubeClientBuilder) Option {
+// 	return kubeClientBuilderOption{KubeClientBuilder: kubeClientBuilder}
+// }
 
 type loggerOption struct {
 	Logger log.Logger

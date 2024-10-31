@@ -1,12 +1,18 @@
 package grpcserver
 
 import (
+	"context"
+
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	apiv1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 	acmetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
 var (
@@ -19,6 +25,26 @@ var (
 		"app": "goflow-grpc-server",
 	}
 )
+
+type DeploymentApplier struct {
+	config *acappsv1.DeploymentApplyConfiguration
+	client typedappsv1.DeploymentInterface
+}
+
+func NewDeploymentApplier(config *acappsv1.DeploymentApplyConfiguration, client typedappsv1.DeploymentInterface) *DeploymentApplier {
+	return &DeploymentApplier{
+		config: config,
+		client: client,
+	}
+}
+
+func (d *DeploymentApplier) Apply(ctx context.Context, opts metav1.ApplyOptions) (runtime.Object, error) {
+	return d.client.Apply(ctx, d.config, opts)
+}
+
+func (d *DeploymentApplier) Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error) {
+	return d.client.Get(ctx, *d.config.Name, opts)
+}
 
 func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 	return acappsv1.Deployment(
