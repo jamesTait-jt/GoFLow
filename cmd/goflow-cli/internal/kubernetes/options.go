@@ -12,8 +12,6 @@ type operatorOptions struct {
 
 func defaultOperatorOptions() operatorOptions {
 	return operatorOptions{
-		// configBuilder:     &KubeConfigBuilder{},
-		// kubeClientBuilder: &KubeClientBuilder{},
 		logger: log.NewConsoleLogger(),
 	}
 }
