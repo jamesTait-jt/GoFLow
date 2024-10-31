@@ -3,6 +3,8 @@ package resource
 import (
 	"context"
 
+	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -37,7 +39,12 @@ func (r *Resource) Get(ctx context.Context, opts metav1.GetOptions) (runtime.Obj
 	return r.getFunc(ctx, opts)
 }
 
-func NewNamespace(config *acapiv1.NamespaceApplyConfiguration, client typedapiv1.NamespaceInterface) *Resource {
+type namespaceInterface interface {
+	Apply(ctx context.Context, namespace *acapiv1.NamespaceApplyConfiguration, opts metav1.ApplyOptions) (result *v1.Namespace, err error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.Namespace, error)
+}
+
+func NewNamespace(config *acapiv1.NamespaceApplyConfiguration, client namespaceInterface) *Resource {
 	return &Resource{
 		name: *config.Name,
 		kind: "namespace",
