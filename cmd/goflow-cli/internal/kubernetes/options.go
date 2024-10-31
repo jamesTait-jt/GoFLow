@@ -2,56 +2,70 @@ package kubernetes
 
 import "github.com/jamesTait-jt/goflow/pkg/log"
 
-type Option interface {
-	apply(*options)
+type OperatorOption interface {
+	apply(*operatorOptions)
 }
 
-type options struct {
-	// configBuilder     kubeConfigBuilder
-	// kubeClientBuilder kubeClientBuilder
+type operatorOptions struct {
 	logger log.Logger
 }
 
-func defaultOptions() options {
-	return options{
+func defaultOperatorOptions() operatorOptions {
+	return operatorOptions{
 		// configBuilder:     &KubeConfigBuilder{},
 		// kubeClientBuilder: &KubeClientBuilder{},
 		logger: log.NewConsoleLogger(),
 	}
 }
 
-// type configBuilderOption struct {
-// 	ConfigBuilder kubeConfigBuilder
-// }
-
-// func (c configBuilderOption) apply(opts *options) {
-// 	opts.configBuilder = c.ConfigBuilder
-// }
-
-// func WithConfigBuilder(configBuilder kubeConfigBuilder) Option {
-// 	return configBuilderOption{ConfigBuilder: configBuilder}
-// }
-
-// type kubeClientBuilderOption struct {
-// 	KubeClientBuilder kubeClientBuilder
-// }
-
-// func (k kubeClientBuilderOption) apply(opts *options) {
-// 	opts.kubeClientBuilder = k.KubeClientBuilder
-// }
-
-// func WithKubeClientBuilder(kubeClientBuilder kubeClientBuilder) Option {
-// 	return kubeClientBuilderOption{KubeClientBuilder: kubeClientBuilder}
-// }
-
 type loggerOption struct {
 	Logger log.Logger
 }
 
-func (l loggerOption) apply(opts *options) {
+func (l loggerOption) apply(opts *operatorOptions) {
 	opts.logger = l.Logger
 }
 
-func WithLogger(logger log.Logger) Option {
+func WithLogger(logger log.Logger) OperatorOption {
 	return loggerOption{Logger: logger}
+}
+
+type BuildClientsetOption interface {
+	apply(*buildClientsetOptions)
+}
+
+type buildClientsetOptions struct {
+	configBuilder     kubeConfigBuilder
+	kubeClientBuilder clientSetBuilder
+}
+
+func defaultBuildClientsetOptions() buildClientsetOptions {
+	return buildClientsetOptions{
+		configBuilder:     &KubeConfigBuilder{},
+		kubeClientBuilder: &KubeClientBuilder{},
+	}
+}
+
+type configBuilderOption struct {
+	ConfigBuilder kubeConfigBuilder
+}
+
+func (c configBuilderOption) apply(opts *buildClientsetOptions) {
+	opts.configBuilder = c.ConfigBuilder
+}
+
+func WithConfigBuilder(configBuilder kubeConfigBuilder) BuildClientsetOption {
+	return configBuilderOption{ConfigBuilder: configBuilder}
+}
+
+type kubeClientBuilderOption struct {
+	KubeClientBuilder clientSetBuilder
+}
+
+func (k kubeClientBuilderOption) apply(opts *buildClientsetOptions) {
+	opts.kubeClientBuilder = k.KubeClientBuilder
+}
+
+func WithKubeClientBuilder(kubeClientBuilder clientSetBuilder) BuildClientsetOption {
+	return kubeClientBuilderOption{KubeClientBuilder: kubeClientBuilder}
 }

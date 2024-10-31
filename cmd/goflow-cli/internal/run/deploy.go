@@ -1,11 +1,16 @@
 package run
 
 import (
+	"fmt"
+
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes"
 	grpcserver "github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/grpc_server"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/redis"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/workerpool"
 	"github.com/jamesTait-jt/goflow/pkg/log"
+	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
 // TODO: Accept a deployOpts struct or something
@@ -19,85 +24,79 @@ func deployKubernetes(
 ) error {
 	logger.Info("Connecting to the Kubernetes cluster")
 
-	kubeConfigPath, err := kubernetes.GetKubeConfigPath()
+	clientset, err := kubernetes.NewClientset(conf.Kubernetes.ClusterURL)
 	if err != nil {
 		return err
 	}
 
-	kubeConfig, err := kubernetes.BuildConfig(conf.Kubernetes.ClusterURL, kubeConfigPath)
+	kubeOperator, err := kubernetes.NewOperator(kubernetes.WithLogger(logger))
 	if err != nil {
 		return err
 	}
 
-	clientset, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return err
-	}
-
-	kubeClient, err := kubernetes.New(
-		resource.NewNamespaceApplier(clientset),
-		resource.NewDeploymentApplier(clientset, conf.Kubernetes.Namespace),
-		resource.NewServiceApplier(clientset, conf.Kubernetes.Namespace),
-	)
-	if err != nil {
-		return err
-	}
-
-	// logger.Info(fmt.Sprintf("Initialising namespace '%s'", conf.Kubernetes.Namespace))
-
-	// if err = kubeClient.ApplyNamespace(acapiv1.Namespace(conf.Kubernetes.Namespace)); err != nil {
-	// 	return err
-	// }
-
-	logger.Info("Deploying message broker")
-
+	namespacesClient := clientset.CoreV1().Namespaces()
 	deploymentsClient := clientset.AppsV1().Deployments(conf.Kubernetes.Namespace)
+	servicesClient := clientset.CoreV1().Services(conf.Kubernetes.Namespace)
+	pvClient := clientset.CoreV1().PersistentVolumes()
+	pvcClient := clientset.CoreV1().PersistentVolumeClaims(conf.Kubernetes.Namespace)
 
-	grpcServer := grpcserver.NewDeploymentApplier(
-		grpcserver.Deployment(conf),
-		deploymentsClient,
-	)
-
-	if _, err = kubeClient.Apply(grpcServer); err != nil {
-		return err
+	resources := []kubernetes.Resource{
+		resource.NewNamespace(
+			acapiv1.Namespace(conf.Kubernetes.Namespace),
+			namespacesClient,
+		),
+		resource.NewDeployment(
+			redis.Deployment(conf),
+			deploymentsClient,
+		),
+		resource.NewService(
+			redis.Service(conf),
+			servicesClient,
+		),
+		resource.NewDeployment(
+			grpcserver.Deployment(conf),
+			deploymentsClient,
+		),
+		resource.NewService(
+			grpcserver.Service(conf),
+			servicesClient,
+		),
+		resource.NewPersistentVolume(
+			workerpool.HandlersPV(conf),
+			pvClient,
+		),
+		resource.NewPersistentVolumeClaim(
+			workerpool.HandlersPVC(conf),
+			pvcClient,
+		),
+		resource.NewDeployment(
+			workerpool.Deployment(conf),
+			deploymentsClient,
+		),
 	}
 
-	// if err = kubeClient.ApplyService(redis.Service(conf)); err != nil {
-	// 	return err
-	// }
+	for i := 0; i < len(resources); i++ {
+		r := resources[i]
+		logger.Info(fmt.Sprintf("Deploying %s '%s'", r.Kind(), r.Name()))
 
-	// logger.Info("Deploying goflow gRPC server")
+		neededModification, err := kubeOperator.Apply(r)
+		if err != nil {
+			return err
+		}
 
-	// if err = kubeClient.ApplyDeployment(grpcserver.Deployment(conf)); err != nil {
-	// 	return err
-	// }
+		if neededModification {
+			logger.Info(fmt.Sprintf("'%s' needs modification - waiting...", r.Name()))
+		}
 
-	// if err = kubeClient.ApplyService(grpcserver.Service(conf)); err != nil {
-	// 	return err
-	// }
+		logger.Success(fmt.Sprintf("'%s' deployed successfully", r.Name()))
+	}
 
-	// logger.Info("Uploading plugins")
-
-	// if err = kubeClient.ApplyPV(workerpool.HandlersPV(conf)); err != nil {
-	// 	return err
-	// }
-
-	// if err = kubeClient.ApplyPVC(workerpool.HandlersPVC(conf)); err != nil {
-	// 	return err
-	// }
-
-	// logger.Info("Deploying workerpools")
-
-	// if err = kubeClient.ApplyDeployment(workerpool.Deployment(conf)); err != nil {
-	// 	return err
-	// }
-
-	// logger.Success(
-	// 	fmt.Sprintf(
-	// 		"GoFlow deployed! Use `kubectl get pods -n %s` to see the status of the application",
-	// 		conf.Kubernetes.Namespace,
-	// 	),
-	// )
+	logger.Success(
+		fmt.Sprintf(
+			"GoFlow deployed! Use `kubectl get pods -n %s` to see the status of the application",
+			conf.Kubernetes.Namespace,
+		),
+	)
 
 	return nil
 }

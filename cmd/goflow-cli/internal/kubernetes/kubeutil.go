@@ -10,7 +10,9 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-func GetKubeConfigPath() (string, error) {
+type KubeConfigBuilder struct{}
+
+func (k *KubeConfigBuilder) GetKubeConfigPath() (string, error) {
 	home := homedir.HomeDir()
 	if home == "" {
 		return "", errors.New("could not find .kube/config file in home directory")
@@ -19,10 +21,12 @@ func GetKubeConfigPath() (string, error) {
 	return filepath.Join(home, ".kube", "config"), nil
 }
 
-func BuildConfig(clusterURL, kubeConfPath string) (*rest.Config, error) {
+func (k *KubeConfigBuilder) BuildConfig(clusterURL, kubeConfPath string) (*rest.Config, error) {
 	return clientcmd.BuildConfigFromFlags(clusterURL, kubeConfPath)
 }
 
-func NewForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
+type KubeClientBuilder struct{}
+
+func (k *KubeClientBuilder) NewForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(config)
 }

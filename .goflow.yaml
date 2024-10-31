@@ -12,4 +12,4 @@ redis:
   replicas: 1
 kubernetes:
   namespace: "goflow"
-  clusterUrl: "https://127.0.0.1:32771"
+  clusterUrl: "https://127.0.0.1:59096"

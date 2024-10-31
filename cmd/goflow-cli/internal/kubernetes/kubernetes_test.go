@@ -9,408 +9,496 @@ import (
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	appsv1 "k8s.io/api/apps/v1"
 
-	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
-	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
-	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 )
 
-func Test_New(t *testing.T) {
-	t.Run("Initialises KubeClient", func(t *testing.T) {
+func Test_NewOperator(t *testing.T) {
+	t.Run("Initialises Operator", func(t *testing.T) {
 		// Arrange
-		mockConfigBuilder := new(MockConfigBuilder)
-		mockKubeClientBuilder := new(MockKubeClientBuilder)
 		mockLogger := new(log.TestifyMock)
 
-		clusterURL := "cluster.url"
-		namespace := "testNamespace"
-		kubeConfigPath := "path/to/kube/config"
-		kubeConfig := &rest.Config{}
-		clientSet := &kubernetes.Clientset{}
-
-		mockConfigBuilder.On("GetKubeConfigPath").Return(kubeConfigPath, nil)
-		mockConfigBuilder.On("BuildConfig", clusterURL, kubeConfigPath).Return(kubeConfig, nil)
-		mockKubeClientBuilder.On("NewForConfig", kubeConfig).Return(clientSet, nil)
-
 		// Act
-		kube, err := New(
-			clusterURL, namespace,
-			WithConfigBuilder(mockConfigBuilder),
-			WithKubeClientBuilder(mockKubeClientBuilder),
+		kube, err := NewOperator(
 			WithLogger(mockLogger),
 		)
 
 		// Assert
-		mockConfigBuilder.AssertExpectations(t)
-		mockKubeClientBuilder.AssertExpectations(t)
-
 		assert.Nil(t, err)
 		assert.NotNil(t, kube.ctx)
-		assert.NotNil(t, kube.deploymentApplier)
-		assert.NotNil(t, kube.serviceApplier)
+		assert.Equal(t, mockLogger, kube.logger)
 	})
+}
 
-	t.Run("Returns error if could not find kube config", func(t *testing.T) {
+func Test_Operator_Apply(t *testing.T) {
+	t.Run("Applies the resource and returns true if the resource doesn't exist", func(t *testing.T) {
 		// Arrange
-		mockConfigBuilder := new(MockConfigBuilder)
-		mockKubeClientBuilder := new(MockKubeClientBuilder)
-		mockLogger := new(log.TestifyMock)
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
 
-		clusterURL := "cluster.url"
-		namespace := "testNamespace"
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
 
-		configBuilderErr := errors.New("conf builder err")
-		mockConfigBuilder.On("GetKubeConfigPath").Return("", configBuilderErr)
+		currResource := &runtime.Unknown{}
+		notFoundErr := k8serr.NewNotFound(schema.GroupResource{}, "")
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, notFoundErr)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On(
+			"Apply",
+			ctx,
+			metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
+		).Once().Return(proposedResource, nil)
+
+		currSpec := "CURRENTSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(currSpec, nil)
+
+		proposedSpec := "PROPOSEDSPEC"
+		mockSpeccer.On("Spec", proposedResource).Once().Return(proposedSpec, nil)
+
+		mockResource.On(
+			"Apply",
+			ctx,
+			metav1.ApplyOptions{FieldManager: "goflow-cli"},
+		).Once().Return(nil, nil)
 
 		// Act
-		kube, err := New(
-			clusterURL, namespace,
-			WithConfigBuilder(mockConfigBuilder),
-			WithKubeClientBuilder(mockKubeClientBuilder),
-			WithLogger(mockLogger),
-		)
+		neededModification, err := o.Apply(mockResource)
 
 		// Assert
-		mockConfigBuilder.AssertExpectations(t)
-		mockConfigBuilder.AssertNotCalled(t, "BuildConfig")
-		mockKubeClientBuilder.AssertNotCalled(t, "NewForConfig")
+		assert.Nil(t, err)
+		assert.True(t, neededModification)
 
-		assert.EqualError(t, err, configBuilderErr.Error())
-		assert.Nil(t, kube)
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
 	})
 
-	t.Run("Returns error if could not build kube config", func(t *testing.T) {
+	t.Run("Applies the resource and returns true if the specs are different", func(t *testing.T) {
 		// Arrange
-		mockConfigBuilder := new(MockConfigBuilder)
-		mockKubeClientBuilder := new(MockKubeClientBuilder)
-		mockLogger := new(log.TestifyMock)
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
 
-		clusterURL := "cluster.url"
-		namespace := "testNamespace"
-		kubeConfigPath := "path/to/kube/config"
-		configBuilderErr := errors.New("conf builder err")
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
 
-		mockConfigBuilder.On("GetKubeConfigPath").Return(kubeConfigPath, nil)
-		mockConfigBuilder.On("BuildConfig", clusterURL, kubeConfigPath).Return(nil, configBuilderErr)
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On(
+			"Apply",
+			ctx,
+			metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
+		).Once().Return(proposedResource, nil)
+
+		currSpec := "CURRENTSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(currSpec, nil)
+
+		proposedSpec := "PROPOSEDSPEC"
+		mockSpeccer.On("Spec", proposedResource).Once().Return(proposedSpec, nil)
+
+		mockResource.On(
+			"Apply",
+			ctx,
+			metav1.ApplyOptions{FieldManager: "goflow-cli"},
+		).Once().Return(nil, nil)
 
 		// Act
-		kube, err := New(
-			clusterURL, namespace,
-			WithConfigBuilder(mockConfigBuilder),
-			WithKubeClientBuilder(mockKubeClientBuilder),
-			WithLogger(mockLogger),
-		)
+		neededModification, err := o.Apply(mockResource)
 
 		// Assert
-		mockConfigBuilder.AssertExpectations(t)
-		mockKubeClientBuilder.AssertNotCalled(t, "NewForConfig")
+		assert.Nil(t, err)
+		assert.True(t, neededModification)
 
-		assert.EqualError(t, err, configBuilderErr.Error())
-		assert.Nil(t, kube)
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
 	})
 
-	t.Run("Returns error if could not create Clientset", func(t *testing.T) {
+	t.Run("Does not apply the resource and returns false if the specs are the same", func(t *testing.T) {
 		// Arrange
-		mockConfigBuilder := new(MockConfigBuilder)
-		mockKubeClientBuilder := new(MockKubeClientBuilder)
-		mockLogger := new(log.TestifyMock)
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
 
-		clusterURL := "cluster.url"
-		namespace := "testNamespace"
-		kubeConfigPath := "path/to/kube/config"
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}).
+			Once().
+			Return(proposedResource, nil)
+
+		currSpec := "CURRENTSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(currSpec, nil)
+		mockSpeccer.On("Spec", proposedResource).Once().Return(currSpec, nil)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.Nil(t, err)
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if could not get current resource", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
+
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		getErr := errors.New("couldnt get")
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, getErr)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, getErr.Error())
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if could not dry run apply", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
+
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		applyErr := errors.New("could not dry run")
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}).
+			Once().
+			Return(nil, applyErr)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, applyErr.Error())
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if could not get current spec of resource", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
+
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}).
+			Once().
+			Return(proposedResource, nil)
+
+		specErr := errors.New("couldnt spec first")
+		mockSpeccer.On("Spec", currResource).Once().Return(nil, specErr)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, specErr.Error())
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if could not get current spec of proposed resource", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
+
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}).
+			Once().
+			Return(proposedResource, nil)
+
+		currSpec := "CURRENTSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(currSpec, nil)
+
+		specErr := errors.New("couldnt spec second")
+		mockSpeccer.On("Spec", currResource).Once().Return(nil, specErr)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, specErr.Error())
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if could not do actual apply", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+		mockSpeccer := new(mockSpeccer)
+
+		o := &Operator{
+			ctx:     ctx,
+			speccer: mockSpeccer,
+		}
+
+		currResource := &runtime.Unknown{}
+		mockResource.On("Get", ctx, metav1.GetOptions{}).Once().Return(currResource, nil)
+
+		proposedResource := &runtime.Unknown{}
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}).
+			Once().
+			Return(proposedResource, nil)
+
+		currSpec := "CURRENTSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(currSpec, nil)
+
+		proposedSpec := "PROPOSEDSPEC"
+		mockSpeccer.On("Spec", currResource).Once().Return(proposedSpec, nil)
+
+		applyErr := errors.New("couldnt do actual apply")
+		mockResource.On("Apply", ctx, metav1.ApplyOptions{FieldManager: "goflow-cli"}).
+			Once().
+			Return(nil, applyErr)
+
+		// Act
+		neededModification, err := o.Apply(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, applyErr.Error())
+		assert.False(t, neededModification)
+
+		mockResource.AssertExpectations(t)
+		mockSpeccer.AssertExpectations(t)
+	})
+}
+
+func Test_NewClientSet(t *testing.T) {
+	t.Run("Returns clientset", func(t *testing.T) {
+		// Arrange
+		clusterURL := "cluster"
+		mockKubeConfBuilder := new(mockKubeConfigBuilder)
+		mockClientsetBuilder := new(mockClientsetBuilder)
+
+		kubeconfigPath := "config path"
+		mockKubeConfBuilder.On("GetKubeConfigPath").Once().Return(kubeconfigPath, nil)
+
 		kubeConfig := &rest.Config{}
+		mockKubeConfBuilder.On("BuildConfig", clusterURL, kubeconfigPath).Once().Return(kubeConfig, nil)
 
-		kubeClientBuilderErr := errors.New("kube client builder err")
-
-		mockConfigBuilder.On("GetKubeConfigPath").Return(kubeConfigPath, nil)
-		mockConfigBuilder.On("BuildConfig", clusterURL, kubeConfigPath).Return(kubeConfig, nil)
-		mockKubeClientBuilder.On("NewForConfig", kubeConfig).Return(nil, kubeClientBuilderErr)
+		clientset := &kubernetes.Clientset{}
+		mockClientsetBuilder.On("NewForConfig", kubeConfig).Once().Return(clientset, nil)
 
 		// Act
-		kube, err := New(
-			clusterURL, namespace,
-			WithConfigBuilder(mockConfigBuilder),
-			WithKubeClientBuilder(mockKubeClientBuilder),
-			WithLogger(mockLogger),
+		cs, err := NewClientset(
+			clusterURL,
+			WithConfigBuilder(mockKubeConfBuilder),
+			WithKubeClientBuilder(mockClientsetBuilder),
 		)
 
 		// Assert
-		mockConfigBuilder.AssertExpectations(t)
-		mockKubeClientBuilder.AssertExpectations(t)
-
-		assert.EqualError(t, err, kubeClientBuilderErr.Error())
-		assert.Nil(t, kube)
-	})
-}
-
-/*
-func Test_KubeClient_ApplyNamespace(t *testing.T) {
-	t.Run("Logs if no changes are required", func(t *testing.T) {
-		// Arrange
-		mockClient := new(MockNamespacesClient)
-		mockLogger := new(log.TestifyMock)
-
-		namespacesConfig := acapiv1.Namespace("namespace")
-
-		k := &KubeClient{
-			ctx:              context.Background(),
-			namespacesClient: mockClient,
-			logger:           mockLogger,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(nil, nil)
-		mockLogger.On("Info", "No changes required for 'namespace'")
-
-		// Act
-		err := k.ApplyNamespace(namespacesConfig)
-
-		// Assert
-		mockClient.AssertExpectations(t)
-		mockLogger.AssertExpectations(t)
-
 		assert.Nil(t, err)
+		assert.Equal(t, clientset, cs)
+
+		mockKubeConfBuilder.AssertExpectations(t)
+		mockClientsetBuilder.AssertExpectations(t)
 	})
 
-	t.Run("Applies namespace spec if required and waits", func(t *testing.T) {
+	t.Run("Returns error if couldnt get kube conf path", func(t *testing.T) {
 		// Arrange
-		mockClient := new(MockNamespacesClient)
-		mockEventWaiter := new(MockEventWaiter)
+		clusterURL := "cluster"
+		mockKubeConfBuilder := new(mockKubeConfigBuilder)
+		mockClientsetBuilder := new(mockClientsetBuilder)
 
-		namespacesConfig := acapiv1.Namespace("namespace")
-
-		k := &KubeClient{
-			ctx:              context.Background(),
-			namespacesClient: mockClient,
-			waiter:           mockEventWaiter,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(&apiv1.Namespace{}, nil)
-
-		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
-		mockClient.On("Apply", k.ctx, namespacesConfig, actualRunOpts).Once().Return(nil, nil)
-
-		waitErr := errors.New("waiter error")
-		mockEventWaiter.On(
-			"WaitFor",
-			"namespace",
-			"",
-			[]watch.EventType{watch.Added, watch.Modified},
-			mockClient,
-		).Once().Return(waitErr)
+		getPathErr := errors.New("couldnt get path")
+		mockKubeConfBuilder.On("GetKubeConfigPath").Once().Return("", getPathErr)
 
 		// Act
-		err := k.ApplyNamespace(namespacesConfig)
+		cs, err := NewClientset(
+			clusterURL,
+			WithConfigBuilder(mockKubeConfBuilder),
+			WithKubeClientBuilder(mockClientsetBuilder),
+		)
 
 		// Assert
-		mockClient.AssertExpectations(t)
-		mockEventWaiter.AssertExpectations(t)
+		assert.EqualError(t, err, getPathErr.Error())
+		assert.Nil(t, cs)
 
-		assert.EqualError(t, err, waitErr.Error())
+		mockKubeConfBuilder.AssertExpectations(t)
+		mockClientsetBuilder.AssertExpectations(t)
 	})
 
-	t.Run("Returns error if couldn't apply dry run", func(t *testing.T) {
+	t.Run("Returns error if couldnt build kube conf", func(t *testing.T) {
 		// Arrange
-		mockClient := new(MockNamespacesClient)
-		mockLogger := new(log.TestifyMock)
+		clusterURL := "cluster"
+		mockKubeConfBuilder := new(mockKubeConfigBuilder)
+		mockClientsetBuilder := new(mockClientsetBuilder)
 
-		namespacesConfig := acapiv1.Namespace("namespace")
+		kubeconfigPath := "config path"
+		mockKubeConfBuilder.On("GetKubeConfigPath").Once().Return(kubeconfigPath, nil)
 
-		k := &KubeClient{
-			ctx:              context.Background(),
-			namespacesClient: mockClient,
-			logger:           mockLogger,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		dryRunErr := errors.New("dry run err")
-		mockClient.On("Apply", k.ctx, namespacesConfig, dryRunOpts).Once().Return(nil, dryRunErr)
+		buildConfErr := errors.New("couldnt build conf")
+		mockKubeConfBuilder.On("BuildConfig", clusterURL, kubeconfigPath).Once().Return(nil, buildConfErr)
 
 		// Act
-		err := k.ApplyNamespace(namespacesConfig)
+		cs, err := NewClientset(
+			clusterURL,
+			WithConfigBuilder(mockKubeConfBuilder),
+			WithKubeClientBuilder(mockClientsetBuilder),
+		)
 
 		// Assert
-		mockClient.AssertExpectations(t)
-		mockLogger.AssertNotCalled(t, "Info")
+		assert.EqualError(t, err, buildConfErr.Error())
+		assert.Nil(t, cs)
 
-		assert.EqualError(t, err, dryRunErr.Error())
+		mockKubeConfBuilder.AssertExpectations(t)
+		mockClientsetBuilder.AssertExpectations(t)
 	})
 
-	t.Run("Returns error if couldn't apply real run", func(t *testing.T) {
+	t.Run("Returns error if couldnt build clientset", func(t *testing.T) {
 		// Arrange
-		mockClient := new(MockDeploymentsClient)
-		mockEventWaiter := new(MockEventWaiter)
+		clusterURL := "cluster"
+		mockKubeConfBuilder := new(mockKubeConfigBuilder)
+		mockClientsetBuilder := new(mockClientsetBuilder)
 
-		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
+		kubeconfigPath := "config path"
+		mockKubeConfBuilder.On("GetKubeConfigPath").Once().Return(kubeconfigPath, nil)
 
-		k := &KubeClient{
-			ctx:               context.Background(),
-			namespace:         "namespace",
-			deploymentsClient: mockClient,
-			waiter:            mockEventWaiter,
-		}
+		kubeConfig := &rest.Config{}
+		mockKubeConfBuilder.On("BuildConfig", clusterURL, kubeconfigPath).Once().Return(kubeConfig, nil)
 
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(&appsv1.Deployment{}, nil)
-
-		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
-		actualRunErr := errors.New("actual run err")
-		mockClient.On("Apply", k.ctx, deploymentConfig, actualRunOpts).Once().Return(nil, actualRunErr)
+		buildClientsetErr := errors.New("couldnt build clientset")
+		mockClientsetBuilder.On("NewForConfig", kubeConfig).Once().Return(nil, buildClientsetErr)
 
 		// Act
-		err := k.ApplyDeployment(deploymentConfig)
+		cs, err := NewClientset(
+			clusterURL,
+			WithConfigBuilder(mockKubeConfBuilder),
+			WithKubeClientBuilder(mockClientsetBuilder),
+		)
 
 		// Assert
-		mockClient.AssertExpectations(t)
-		mockEventWaiter.AssertNotCalled(t, "WaitFor")
+		assert.EqualError(t, err, buildClientsetErr.Error())
+		assert.Nil(t, cs)
 
-		assert.EqualError(t, err, actualRunErr.Error())
+		mockKubeConfBuilder.AssertExpectations(t)
+		mockClientsetBuilder.AssertExpectations(t)
 	})
 }
 
-func Test_KubeClient_ApplyDeployment(t *testing.T) {
-	t.Run("Logs if no changes are required", func(t *testing.T) {
-		// Arrange
-		mockClient := new(MockDeploymentsClient)
-		mockLogger := new(log.TestifyMock)
-
-		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
-
-		k := &KubeClient{
-			ctx:               context.Background(),
-			deploymentsClient: mockClient,
-			logger:            mockLogger,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(nil, nil)
-		mockLogger.On("Info", "No changes required for 'deployment'")
-
-		// Act
-		err := k.ApplyDeployment(deploymentConfig)
-
-		// Assert
-		mockClient.AssertExpectations(t)
-		mockLogger.AssertExpectations(t)
-
-		assert.Nil(t, err)
-	})
-
-	t.Run("Applies deployment spec if required and waits", func(t *testing.T) {
-		// Arrange
-		mockClient := new(MockDeploymentsClient)
-		mockEventWaiter := new(MockEventWaiter)
-
-		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
-
-		k := &KubeClient{
-			ctx:               context.Background(),
-			namespace:         "namespace",
-			deploymentsClient: mockClient,
-			waiter:            mockEventWaiter,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(&appsv1.Deployment{}, nil)
-
-		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
-		mockClient.On("Apply", k.ctx, deploymentConfig, actualRunOpts).Once().Return(nil, nil)
-
-		waitErr := errors.New("waiter error")
-		mockEventWaiter.On(
-			"WaitFor",
-			"deployment",
-			"namespace",
-			[]watch.EventType{watch.Added, watch.Modified},
-			mockClient,
-		).Once().Return(waitErr)
-
-		// Act
-		err := k.ApplyDeployment(deploymentConfig)
-
-		// Assert
-		mockClient.AssertExpectations(t)
-		mockEventWaiter.AssertExpectations(t)
-
-		assert.EqualError(t, err, waitErr.Error())
-	})
-
-	t.Run("Returns error if couldn't apply dry run", func(t *testing.T) {
-		// Arrange
-		mockClient := new(MockDeploymentsClient)
-		mockLogger := new(log.TestifyMock)
-
-		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
-
-		k := &KubeClient{
-			ctx:               context.Background(),
-			deploymentsClient: mockClient,
-			logger:            mockLogger,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		dryRunErr := errors.New("dry run err")
-		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(nil, dryRunErr)
-
-		// Act
-		err := k.ApplyDeployment(deploymentConfig)
-
-		// Assert
-		mockClient.AssertExpectations(t)
-		mockLogger.AssertNotCalled(t, "Info")
-
-		assert.EqualError(t, err, dryRunErr.Error())
-	})
-
-	t.Run("Returns error if couldn't apply real run", func(t *testing.T) {
-		// Arrange
-		mockClient := new(MockDeploymentsClient)
-		mockEventWaiter := new(MockEventWaiter)
-
-		deploymentConfig := acappsv1.Deployment("deployment", "namespace")
-
-		k := &KubeClient{
-			ctx:               context.Background(),
-			namespace:         "namespace",
-			deploymentsClient: mockClient,
-			waiter:            mockEventWaiter,
-		}
-
-		dryRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}}
-		mockClient.On("Apply", k.ctx, deploymentConfig, dryRunOpts).Once().Return(&appsv1.Deployment{}, nil)
-
-		actualRunOpts := metav1.ApplyOptions{FieldManager: "goflow-cli"}
-		actualRunErr := errors.New("actual run err")
-		mockClient.On("Apply", k.ctx, deploymentConfig, actualRunOpts).Once().Return(nil, actualRunErr)
-
-		// Act
-		err := k.ApplyDeployment(deploymentConfig)
-
-		// Assert
-		mockClient.AssertExpectations(t)
-		mockEventWaiter.AssertNotCalled(t, "WaitFor")
-
-		assert.EqualError(t, err, actualRunErr.Error())
-	})
-}
-*/
-
-type MockConfigBuilder struct {
+type mockResource struct {
 	mock.Mock
 }
 
-func (m *MockConfigBuilder) GetKubeConfigPath() (string, error) {
+func (m *mockResource) Name() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *mockResource) Kind() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *mockResource) Apply(ctx context.Context, opts metav1.ApplyOptions) (runtime.Object, error) {
+	args := m.Called(ctx, opts)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(runtime.Object), args.Error(1)
+}
+
+func (m *mockResource) Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error) {
+	args := m.Called(ctx, opts)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(runtime.Object), args.Error(1)
+}
+
+type mockSpeccer struct {
+	mock.Mock
+}
+
+func (m *mockSpeccer) Spec(obj runtime.Object) (any, error) {
+	args := m.Called(obj)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(any), args.Error(1)
+}
+
+type mockKubeConfigBuilder struct {
+	mock.Mock
+}
+
+func (m *mockKubeConfigBuilder) GetKubeConfigPath() (string, error) {
 	args := m.Called()
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockConfigBuilder) BuildConfig(clusterURL, kubeConfigPath string) (*rest.Config, error) {
+func (m *mockKubeConfigBuilder) BuildConfig(clusterURL, kubeConfigPath string) (*rest.Config, error) {
 	args := m.Called(clusterURL, kubeConfigPath)
 
 	if args.Get(0) == nil {
@@ -420,11 +508,11 @@ func (m *MockConfigBuilder) BuildConfig(clusterURL, kubeConfigPath string) (*res
 	return args.Get(0).(*rest.Config), args.Error(1)
 }
 
-type MockKubeClientBuilder struct {
+type mockClientsetBuilder struct {
 	mock.Mock
 }
 
-func (m *MockKubeClientBuilder) NewForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
+func (m *mockClientsetBuilder) NewForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
 	args := m.Called(config)
 
 	if args.Get(0) == nil {
@@ -432,58 +520,6 @@ func (m *MockKubeClientBuilder) NewForConfig(config *rest.Config) (*kubernetes.C
 	}
 
 	return args.Get(0).(*kubernetes.Clientset), args.Error(1)
-}
-
-type MockDeploymentsClient struct {
-	mock.Mock
-	MockWatchable
-}
-
-func (m *MockDeploymentsClient) Apply(
-	ctx context.Context,
-	deployment *acappsv1.DeploymentApplyConfiguration,
-	opts metav1.ApplyOptions,
-) (*appsv1.Deployment, error) {
-	args := m.Called(ctx, deployment, opts)
-
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-
-	return args.Get(0).(*appsv1.Deployment), args.Error(1)
-}
-
-type MockNamespacesClient struct {
-	mock.Mock
-	MockWatchable
-}
-
-func (m *MockNamespacesClient) Apply(
-	ctx context.Context,
-	namespace *acapiv1.NamespaceApplyConfiguration,
-	opts metav1.ApplyOptions,
-) (*apiv1.Namespace, error) {
-	args := m.Called(ctx, namespace, opts)
-
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-
-	return args.Get(0).(*apiv1.Namespace), args.Error(1)
-}
-
-type MockWatchable struct {
-	mock.Mock
-}
-
-func (m *MockWatchable) Watch(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
-	args := m.Called(ctx, options)
-
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-
-	return args.Get(0).(watch.Interface), args.Error(1)
 }
 
 type MockEventWaiter struct {
