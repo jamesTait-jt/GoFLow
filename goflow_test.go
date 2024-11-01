@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jamesTait-jt/goflow/broker"
+	"github.com/jamesTait-jt/goflow/pkg/channel"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
@@ -72,8 +73,9 @@ func Test_NewLocalMode(t *testing.T) {
 		assert.IsType(t, &workerpool.Pool{}, gf.workers)
 		assert.IsType(t, &broker.ChannelBroker[task.Task]{}, gf.taskBroker)
 		assert.IsType(t, &broker.ChannelBroker[task.Result]{}, gf.resultsBroker)
-
 		assert.IsType(t, &store.InMemoryKVStore[string, task.Result]{}, gf.results)
+
+		assert.Equal(t, taskHandlers, gf.taskHandlers)
 	})
 
 	t.Run("Initialises goflow with custom options in local mode", func(t *testing.T) {
@@ -89,7 +91,7 @@ func Test_NewLocalMode(t *testing.T) {
 }
 
 func Test_GoFlow_Start(t *testing.T) {
-	t.Run("Does not start the workerpool if workers not initialised", func(t *testing.T) {
+	t.Run("Does not start the workerpool if workers not initialised", func(_ *testing.T) {
 		// Arrange
 		ctx, cancel := context.WithCancel(context.Background())
 		resultsWriterWG := &sync.WaitGroup{}
@@ -110,7 +112,7 @@ func Test_GoFlow_Start(t *testing.T) {
 
 		// Assert - it's not really possible to assert here but there would be a nil
 		// pointer dereference if Start() were called on the nil workers, so we can
-		// assume a pass if htere is no panic
+		// assume a pass if there is no panic
 		resultsWriterWG.Wait()
 	})
 
@@ -165,13 +167,14 @@ func Test_GoFlow_Start(t *testing.T) {
 		returnCh := make(chan task.Result)
 		expectedResult := task.Result{TaskID: "1234"}
 
-		resultBroker.On("Dequeue", ctx).Twice().Return((<-chan task.Result)(returnCh))
+		resultBroker.On("Dequeue", ctx).Twice().Return(channel.NewReadOnly(returnCh))
 
 		resultStore.On("Put", expectedResult.TaskID, expectedResult).Once()
 
 		// Act
 		gf.Start()
 		returnCh <- expectedResult
+
 		cancel()
 
 		// 	// Assert
@@ -376,8 +379,8 @@ type mockBroker[T any] struct {
 	mock.Mock
 }
 
-func (m *mockBroker[T]) Submit(ctx context.Context, task T) error {
-	args := m.Called(ctx, task)
+func (m *mockBroker[T]) Submit(ctx context.Context, tsk T) error {
+	args := m.Called(ctx, tsk)
 	return args.Error(0)
 }
 

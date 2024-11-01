@@ -103,7 +103,8 @@ func New(taskBroker Broker[task.Task], resultsBroker Broker[task.Result], opts .
 // For detailed configuration options, see options.go.
 func NewLocalMode(
 	numWorkers, taskQueueSize, resultQueueSize int,
-	taskHandlers KVStore[string, task.Handler], opts ...Option,
+	taskHandlers KVStore[string, task.Handler],
+	opts ...Option,
 ) *GoFlow {
 	options := defaultOptions()
 
@@ -118,6 +119,7 @@ func NewLocalMode(
 		cancel:          cancel,
 		workers:         workerpool.New(numWorkers),
 		taskBroker:      broker.NewChannelBroker[task.Task](taskQueueSize),
+		taskHandlers:    taskHandlers,
 		resultsBroker:   broker.NewChannelBroker[task.Result](resultQueueSize),
 		results:         options.resultsStore,
 		resultsWriterWG: &sync.WaitGroup{},

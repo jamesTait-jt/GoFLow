@@ -10,6 +10,7 @@ import (
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
+	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
@@ -71,8 +72,8 @@ func main() {
 
 	log.Printf("redis connection successful: %s", pong)
 
-	taskSubmitter := broker.NewRedisBroker[task.Task](redisClient, "tasks")
-	resultsGetter := broker.NewRedisBroker[task.Result](redisClient, "results")
+	taskSubmitter := broker.NewRedisBroker[task.Task](redisClient, "tasks", serialise.NewGobSerialiser[task.Task](), nil)
+	resultsGetter := broker.NewRedisBroker[task.Result](redisClient, "results", nil, serialise.NewGobSerialiser[task.Result]())
 	resultsStore := store.NewInMemoryKVStore[string, task.Result]()
 
 	gf := goflow.New(

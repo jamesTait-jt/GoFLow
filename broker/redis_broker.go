@@ -34,11 +34,16 @@ type RedisBroker[T task.TaskOrResult] struct {
 }
 
 func NewRedisBroker[T task.TaskOrResult](
-	client redisClient, key string,
+	client redisClient,
+	key string,
+	serialiser serialiser[T],
+	deserialiser deserialiser[T],
 ) *RedisBroker[T] {
 	return &RedisBroker[T]{
 		client:        client,
 		redisQueueKey: key,
+		serialiser:    serialiser,
+		deserialiser:  deserialiser,
 		outChan:       make(chan T),
 		wg:            &sync.WaitGroup{},
 	}

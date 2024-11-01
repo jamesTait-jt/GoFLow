@@ -11,6 +11,9 @@ linters-settings:
       - opinionated
       - performance
       - style
+    settings:
+      hugeParam:
+        sizeThreshold: 512
   govet:
     enable:
       # - fieldalignment
@@ -38,7 +41,6 @@ linters:
     - ineffassign
     - misspell
     - mnd
-    - nolintlint
     - nakedret
     - prealloc
     - predeclared
@@ -55,11 +57,12 @@ linters:
     - wsl
 issues:
   exclude-dirs:
-  - "example"
+    - "example"
   exclude-rules:
     - path: (.+)_test.go
       linters:
         - goconst
+        - dupl
 
 run:
   issues-exit-code: 1

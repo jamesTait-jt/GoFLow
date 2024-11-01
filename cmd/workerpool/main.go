@@ -7,6 +7,7 @@ import (
 	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/plugin"
+	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
@@ -46,8 +47,12 @@ func initialiseBrokers(brokerType, brokerAddr string) (task.Dequeuer[task.Task],
 			Addr: brokerAddr,
 		})
 
-		taskQueue := broker.NewRedisBroker[task.Task](redisClient, "tasks")
-		resultQueue := broker.NewRedisBroker[task.Result](redisClient, "results")
+		// TODO: Default to gob for now - allow options
+		taskSerialiser := serialise.NewGobSerialiser[task.Task]()
+		resultSerialiser := serialise.NewGobSerialiser[task.Result]()
+
+		taskQueue := broker.NewRedisBroker[task.Task](redisClient, "tasks", nil, taskSerialiser)
+		resultQueue := broker.NewRedisBroker[task.Result](redisClient, "results", resultSerialiser, nil)
 
 		return taskQueue, resultQueue, nil
 

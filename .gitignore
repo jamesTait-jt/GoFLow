@@ -28,4 +28,4 @@ go.work.sum
 handlers
 
 # Config for goflow CLI
-.goflow.yaml
+# .goflow.yaml

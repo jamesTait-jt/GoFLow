@@ -17,13 +17,17 @@ func Test_NewRedisBroker(t *testing.T) {
 		// Arrange
 		client := &mockRedisClient{}
 		key := "queue"
+		serialiser := &mockSerialiser[task.Task]{}
+		deserialiser := &mockDeserialiser[task.Task]{}
 
 		// Act
-		broker := NewRedisBroker[task.Task](client, key)
+		broker := NewRedisBroker[task.Task](client, key, serialiser, deserialiser)
 
 		// Assert
 		assert.Equal(t, client, broker.client)
 		assert.Equal(t, key, broker.redisQueueKey)
+		assert.Equal(t, serialiser, broker.serialiser)
+		assert.Equal(t, deserialiser, broker.deserialiser)
 		assert.NotNil(t, broker.outChan)
 		assert.NotNil(t, &broker.started)
 	})
@@ -156,7 +160,6 @@ type mockDeserialiser[T task.TaskOrResult] struct {
 	mock.Mock
 }
 
-// Deserialise provides a mock function for the Deserialise method
 func (m *mockDeserialiser[T]) Deserialise(toDeserialise []byte) (T, error) {
 	args := m.Called(toDeserialise)
 	return args.Get(0).(T), args.Error(1)
