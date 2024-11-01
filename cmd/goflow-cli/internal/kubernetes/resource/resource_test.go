@@ -55,6 +55,42 @@ func Test_Resource_Apply(t *testing.T) {
 }
 
 // nolint:dupl // it is easier to understand what these tests are doing with the duplication
+func Test_Resource_Delete(t *testing.T) {
+	t.Run("Calls deleteFunc", func(t *testing.T) {
+		// Arrange
+		called := false
+
+		var receivedCtx context.Context
+
+		var receivedOpts metav1.DeleteOptions
+
+		returnedErr := errors.New("error")
+
+		r := Resource{
+			deleteFunc: func(ctx context.Context, opts metav1.DeleteOptions) error {
+				called = true
+				receivedCtx = ctx
+				receivedOpts = opts
+
+				return returnedErr
+			},
+		}
+
+		sentCtx := context.Background()
+		sentOpts := metav1.DeleteOptions{}
+
+		// Act
+		actualErr := r.Delete(sentCtx, sentOpts)
+
+		// Assert
+		assert.True(t, called)
+		assert.Equal(t, sentCtx, receivedCtx)
+		assert.Equal(t, sentOpts, receivedOpts)
+		assert.EqualError(t, returnedErr, actualErr.Error())
+	})
+}
+
+// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_Resource_Get(t *testing.T) {
 	t.Run("Calls getFunc", func(t *testing.T) {
 		// Arrange
@@ -100,6 +136,7 @@ func Test_NewNamespace(t *testing.T) {
 
 	config := acapiv1.Namespace(namespaceName)
 	applyOptions := metav1.ApplyOptions{}
+	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
 
 	returnedNamespace := &apiv1.Namespace{}
@@ -124,6 +161,15 @@ func Test_NewNamespace(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Initialises deleteFunc", func(t *testing.T) {
+		mockClient.On("Delete", ctx, namespaceName, deleteOptions).Return(nil)
+		err := resource.Delete(ctx, deleteOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Initialises getFunc", func(t *testing.T) {
 		mockClient.On("Get", ctx, namespaceName, getOptions).Return(returnedNamespace, nil)
 		result, err := resource.Get(ctx, getOptions)
@@ -144,6 +190,7 @@ func Test_NewDeploymemt(t *testing.T) {
 
 	config := acappsv1.Deployment(deploymentName, deploymentNamespace)
 	applyOptions := metav1.ApplyOptions{}
+	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
 
 	returnedDeployment := &appsv1.Deployment{}
@@ -168,6 +215,15 @@ func Test_NewDeploymemt(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Initialises deleteFunc", func(t *testing.T) {
+		mockClient.On("Delete", ctx, deploymentName, deleteOptions).Return(nil)
+		err := resource.Delete(ctx, deleteOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Initialises getFunc", func(t *testing.T) {
 		mockClient.On("Get", ctx, deploymentName, getOptions).Return(returnedDeployment, nil)
 		result, err := resource.Get(ctx, getOptions)
@@ -188,6 +244,7 @@ func Test_NewService(t *testing.T) {
 
 	config := acapiv1.Service(serviceName, serviceNamespace)
 	applyOptions := metav1.ApplyOptions{}
+	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
 
 	returnedService := &apiv1.Service{}
@@ -212,6 +269,15 @@ func Test_NewService(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Initialises deleteFunc", func(t *testing.T) {
+		mockClient.On("Delete", ctx, serviceName, deleteOptions).Return(nil)
+		err := resource.Delete(ctx, deleteOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Initialises getFunc", func(t *testing.T) {
 		mockClient.On("Get", ctx, serviceName, getOptions).Return(returnedService, nil)
 		result, err := resource.Get(ctx, getOptions)
@@ -231,6 +297,7 @@ func Test_NewPersistentVolume(t *testing.T) {
 
 	config := acapiv1.PersistentVolume(pvName)
 	applyOptions := metav1.ApplyOptions{}
+	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
 
 	returnedPV := &apiv1.PersistentVolume{}
@@ -255,6 +322,15 @@ func Test_NewPersistentVolume(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Initialises deleteFunc", func(t *testing.T) {
+		mockClient.On("Delete", ctx, pvName, deleteOptions).Return(nil)
+		err := resource.Delete(ctx, deleteOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Initialises getFunc", func(t *testing.T) {
 		mockClient.On("Get", ctx, pvName, getOptions).Return(returnedPV, nil)
 		result, err := resource.Get(ctx, getOptions)
@@ -275,6 +351,7 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 
 	config := acapiv1.PersistentVolumeClaim(pvcName, pvcNamspace)
 	applyOptions := metav1.ApplyOptions{}
+	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
 
 	returnedClaim := &apiv1.PersistentVolumeClaim{}
@@ -299,6 +376,15 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Initialises deleteFunc", func(t *testing.T) {
+		mockClient.On("Delete", ctx, pvcName, deleteOptions).Return(nil)
+		err := resource.Delete(ctx, deleteOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Initialises getFunc", func(t *testing.T) {
 		mockClient.On("Get", ctx, pvcName, getOptions).Return(returnedClaim, nil)
 		result, err := resource.Get(ctx, getOptions)
@@ -310,8 +396,17 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 	})
 }
 
-type mockNamespaceClient struct {
+type mockBaseClient struct {
 	mock.Mock
+}
+
+func (m *mockBaseClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	args := m.Called(ctx, name, opts)
+	return args.Error(0)
+}
+
+type mockNamespaceClient struct {
+	mockBaseClient
 }
 
 func (m *mockNamespaceClient) Apply(
@@ -329,7 +424,7 @@ func (m *mockNamespaceClient) Get(
 }
 
 type mockDeploymentClient struct {
-	mock.Mock
+	mockBaseClient
 }
 
 func (m *mockDeploymentClient) Apply(
@@ -347,7 +442,7 @@ func (m *mockDeploymentClient) Get(
 }
 
 type mockServiceClient struct {
-	mock.Mock
+	mockBaseClient
 }
 
 func (m *mockServiceClient) Apply(
@@ -365,7 +460,7 @@ func (m *mockServiceClient) Get(
 }
 
 type mockPersistentVolumeClient struct {
-	mock.Mock
+	mockBaseClient
 }
 
 func (m *mockPersistentVolumeClient) Apply(
@@ -383,7 +478,7 @@ func (m *mockPersistentVolumeClient) Get(
 }
 
 type mockPersistentVolumeClaimClient struct {
-	mock.Mock
+	mockBaseClient
 }
 
 func (m *mockPersistentVolumeClaimClient) Apply(

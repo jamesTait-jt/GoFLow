@@ -328,6 +328,74 @@ func Test_Operator_Apply(t *testing.T) {
 	})
 }
 
+func Test_Operator_Delete(t *testing.T) {
+	t.Run("Returns true if the resource was deleted successfully", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+
+		o := &Operator{
+			ctx: ctx,
+		}
+
+		mockResource.On("Delete", ctx, metav1.DeleteOptions{}).Once().Return(nil)
+
+		// Act
+		neededDeletion, err := o.Delete(mockResource)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.True(t, neededDeletion)
+
+		mockResource.AssertExpectations(t)
+	})
+
+	t.Run("Returns false if the resource does not exist", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+
+		o := &Operator{
+			ctx: ctx,
+		}
+
+		notFoundErr := k8serr.NewNotFound(schema.GroupResource{}, "test-resource")
+		mockResource.On("Delete", ctx, metav1.DeleteOptions{}).Once().Return(notFoundErr)
+
+		// Act
+		neededDeletion, err := o.Delete(mockResource)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.False(t, neededDeletion)
+
+		mockResource.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if there was an error deleting the resource", func(t *testing.T) {
+		// Arrange
+		ctx := context.Background()
+		mockResource := new(mockResource)
+
+		o := &Operator{
+			ctx: ctx,
+		}
+
+		deleteErr := errors.New("could not delete")
+		mockResource.On("Delete", ctx, metav1.DeleteOptions{}).Once().Return(deleteErr)
+
+		// Act
+		neededDeletion, err := o.Delete(mockResource)
+
+		// Assert
+		assert.EqualError(t, err, deleteErr.Error())
+		assert.False(t, neededDeletion)
+
+		mockResource.AssertExpectations(t)
+	})
+
+}
+
 func Test_NewClientSet(t *testing.T) {
 	t.Run("Returns clientset", func(t *testing.T) {
 		// Arrange
@@ -463,6 +531,12 @@ func (m *mockResource) Apply(ctx context.Context, opts metav1.ApplyOptions) (run
 	}
 
 	return args.Get(0).(runtime.Object), args.Error(1)
+}
+
+func (m *mockResource) Delete(ctx context.Context, opts metav1.DeleteOptions) error {
+	args := m.Called(ctx, opts)
+
+	return args.Error(0)
 }
 
 func (m *mockResource) Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error) {

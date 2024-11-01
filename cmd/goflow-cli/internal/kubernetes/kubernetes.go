@@ -18,6 +18,7 @@ type Resource interface {
 	Kind() string
 
 	Apply(ctx context.Context, opts metav1.ApplyOptions) (runtime.Object, error)
+	Delete(ctx context.Context, opts metav1.DeleteOptions) error
 	Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error)
 }
 
@@ -53,18 +54,15 @@ func NewOperator(opts ...OperatorOption) (*Operator, error) {
 	return client, nil
 }
 
-func (k *Operator) Apply(r Resource) (bool, error) {
-	currResource, err := r.Get(
-		k.ctx,
-		metav1.GetOptions{},
-	)
+func (o *Operator) Apply(r Resource) (bool, error) {
+	currResource, err := r.Get(o.ctx, metav1.GetOptions{})
 
 	if err != nil && !k8serr.IsNotFound(err) {
 		return false, err
 	}
 
 	proposedResource, err := r.Apply(
-		k.ctx,
+		o.ctx,
 		metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
 	)
 
@@ -72,12 +70,12 @@ func (k *Operator) Apply(r Resource) (bool, error) {
 		return false, err
 	}
 
-	currSpec, err := k.speccer.Spec(currResource)
+	currSpec, err := o.speccer.Spec(currResource)
 	if err != nil {
 		return false, err
 	}
 
-	proposedSpec, err := k.speccer.Spec(proposedResource)
+	proposedSpec, err := o.speccer.Spec(proposedResource)
 	if err != nil {
 		return false, err
 	}
@@ -87,15 +85,25 @@ func (k *Operator) Apply(r Resource) (bool, error) {
 		return false, nil
 	}
 
-	_, err = r.Apply(
-		k.ctx,
-		metav1.ApplyOptions{FieldManager: "goflow-cli"},
-	)
+	_, err = r.Apply(o.ctx, metav1.ApplyOptions{FieldManager: "goflow-cli"})
+
+	return err == nil, err
+}
+
+func (o *Operator) Delete(r Resource) (bool, error) {
+	err := r.Delete(o.ctx, metav1.DeleteOptions{})
 
 	if err != nil {
+		// was not found - no need to delete
+		if k8serr.IsNotFound(err) {
+			return false, nil
+		}
+
+		// some other error occurred
 		return false, err
 	}
 
+	// needed to delete
 	return true, nil
 }
 
