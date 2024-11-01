@@ -16,7 +16,6 @@ import (
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 )
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_Resource_Apply(t *testing.T) {
 	t.Run("Calls applyFunc", func(t *testing.T) {
 		// Arrange
@@ -54,7 +53,6 @@ func Test_Resource_Apply(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_Resource_Delete(t *testing.T) {
 	t.Run("Calls deleteFunc", func(t *testing.T) {
 		// Arrange
@@ -90,7 +88,6 @@ func Test_Resource_Delete(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_Resource_Get(t *testing.T) {
 	t.Run("Calls getFunc", func(t *testing.T) {
 		// Arrange
@@ -128,7 +125,6 @@ func Test_Resource_Get(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_NewNamespace(t *testing.T) {
 	// Arrange
 	mockClient := new(mockNamespaceClient)
@@ -181,7 +177,6 @@ func Test_NewNamespace(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_NewDeploymemt(t *testing.T) {
 	// Arrange
 	mockClient := new(mockDeploymentClient)
@@ -235,7 +230,6 @@ func Test_NewDeploymemt(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_NewService(t *testing.T) {
 	// Arrange
 	mockClient := new(mockServiceClient)
@@ -289,7 +283,6 @@ func Test_NewService(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_NewPersistentVolume(t *testing.T) {
 	// Arrange
 	mockClient := new(mockPersistentVolumeClient)
@@ -342,7 +335,6 @@ func Test_NewPersistentVolume(t *testing.T) {
 	})
 }
 
-// nolint:dupl // it is easier to understand what these tests are doing with the duplication
 func Test_NewPersistentVolumeClaim(t *testing.T) {
 	// Arrange
 	mockClient := new(mockPersistentVolumeClaimClient)
