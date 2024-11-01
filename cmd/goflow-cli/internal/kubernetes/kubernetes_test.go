@@ -393,7 +393,6 @@ func Test_Operator_Delete(t *testing.T) {
 
 		mockResource.AssertExpectations(t)
 	})
-
 }
 
 func Test_NewClientSet(t *testing.T) {
@@ -560,7 +559,7 @@ func (m *mockSpeccer) Spec(obj runtime.Object) (any, error) {
 		return nil, args.Error(1)
 	}
 
-	return args.Get(0).(any), args.Error(1)
+	return args.Get(0), args.Error(1)
 }
 
 type mockKubeConfigBuilder struct {

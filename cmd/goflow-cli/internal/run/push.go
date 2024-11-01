@@ -28,6 +28,7 @@ func Push(taskType, payload, serverAddr string) error {
 	if err != nil {
 		log.Fatalf("could not push: %v", err)
 	}
+
 	log.Printf("Task ID: %s", r.GetId())
 
 	return nil
