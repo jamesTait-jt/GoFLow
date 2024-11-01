@@ -71,7 +71,7 @@ func TestService(t *testing.T) {
 		assert.Equal(t, labels, service.Labels)
 
 		assert.NotNil(t, service.Spec)
-		assert.Equal(t, apiv1.ServiceTypeClusterIP, service.Spec.Type)
+		assert.Equal(t, apiv1.ServiceTypeClusterIP, *service.Spec.Type)
 
 		assert.NotNil(t, service.Spec.Selector)
 		assert.Equal(t, labels, service.Spec.Selector)
@@ -81,6 +81,6 @@ func TestService(t *testing.T) {
 
 		port := service.Spec.Ports[0]
 		assert.Equal(t, RedisPort, *port.Port)
-		assert.Equal(t, intstr.FromInt32(RedisPort), port.TargetPort)
+		assert.Equal(t, intstr.FromInt32(RedisPort), *port.TargetPort)
 	})
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes"
-	grpcserver "github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/grpc_server"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/grpcserver"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/redis"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/workerpool"
