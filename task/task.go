@@ -33,6 +33,7 @@ func New(taskType string, payload any) Task {
 	return t
 }
 
+// nolint:revive // stuttering here is acceptable
 type TaskOrResult interface {
 	Task | Result
 }
