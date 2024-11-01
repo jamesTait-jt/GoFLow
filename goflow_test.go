@@ -73,8 +73,9 @@ func Test_NewLocalMode(t *testing.T) {
 		assert.IsType(t, &workerpool.Pool{}, gf.workers)
 		assert.IsType(t, &broker.ChannelBroker[task.Task]{}, gf.taskBroker)
 		assert.IsType(t, &broker.ChannelBroker[task.Result]{}, gf.resultsBroker)
-
 		assert.IsType(t, &store.InMemoryKVStore[string, task.Result]{}, gf.results)
+
+		assert.Equal(t, taskHandlers, gf.taskHandlers)
 	})
 
 	t.Run("Initialises goflow with custom options in local mode", func(t *testing.T) {
