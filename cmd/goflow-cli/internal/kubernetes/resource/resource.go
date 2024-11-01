@@ -3,17 +3,14 @@ package resource
 import (
 	"context"
 
+	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-
-	typedapiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type Resource struct {
@@ -40,7 +37,7 @@ func (r *Resource) Get(ctx context.Context, opts metav1.GetOptions) (runtime.Obj
 }
 
 type namespaceInterface interface {
-	Apply(ctx context.Context, namespace *acapiv1.NamespaceApplyConfiguration, opts metav1.ApplyOptions) (result *v1.Namespace, err error)
+	Apply(ctx context.Context, namespace *acapiv1.NamespaceApplyConfiguration, opts metav1.ApplyOptions) (*apiv1.Namespace, error)
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.Namespace, error)
 }
 
@@ -57,7 +54,12 @@ func NewNamespace(config *acapiv1.NamespaceApplyConfiguration, client namespaceI
 	}
 }
 
-func NewDeployment(config *acappsv1.DeploymentApplyConfiguration, client typedappsv1.DeploymentInterface) *Resource {
+type deploymentInterface interface {
+	Apply(ctx context.Context, deployment *acappsv1.DeploymentApplyConfiguration, opts metav1.ApplyOptions) (*appsv1.Deployment, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*appsv1.Deployment, error)
+}
+
+func NewDeployment(config *acappsv1.DeploymentApplyConfiguration, client deploymentInterface) *Resource {
 	return &Resource{
 		name: *config.Name,
 		kind: "deployment",
@@ -70,7 +72,12 @@ func NewDeployment(config *acappsv1.DeploymentApplyConfiguration, client typedap
 	}
 }
 
-func NewService(config *acapiv1.ServiceApplyConfiguration, client typedapiv1.ServiceInterface) *Resource {
+type serviceInterface interface {
+	Apply(ctx context.Context, service *acapiv1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (*apiv1.Service, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.Service, error)
+}
+
+func NewService(config *acapiv1.ServiceApplyConfiguration, client serviceInterface) *Resource {
 	return &Resource{
 		name: *config.Name,
 		kind: "service",
@@ -83,7 +90,12 @@ func NewService(config *acapiv1.ServiceApplyConfiguration, client typedapiv1.Ser
 	}
 }
 
-func NewPersistentVolume(config *acapiv1.PersistentVolumeApplyConfiguration, client typedapiv1.PersistentVolumeInterface) *Resource {
+type persistentVolumeInterface interface {
+	Apply(ctx context.Context, pv *acapiv1.PersistentVolumeApplyConfiguration, opts metav1.ApplyOptions) (*apiv1.PersistentVolume, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.PersistentVolume, error)
+}
+
+func NewPersistentVolume(config *acapiv1.PersistentVolumeApplyConfiguration, client persistentVolumeInterface) *Resource {
 	return &Resource{
 		name: *config.Name,
 		kind: "pv",
@@ -96,7 +108,12 @@ func NewPersistentVolume(config *acapiv1.PersistentVolumeApplyConfiguration, cli
 	}
 }
 
-func NewPersistentVolumeClaim(config *acapiv1.PersistentVolumeClaimApplyConfiguration, client typedapiv1.PersistentVolumeClaimInterface) *Resource {
+type persistentVolumeClaimInterface interface {
+	Apply(ctx context.Context, pvc *acapiv1.PersistentVolumeClaimApplyConfiguration, opts metav1.ApplyOptions) (*apiv1.PersistentVolumeClaim, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.PersistentVolumeClaim, error)
+}
+
+func NewPersistentVolumeClaim(config *acapiv1.PersistentVolumeClaimApplyConfiguration, client persistentVolumeClaimInterface) *Resource {
 	return &Resource{
 		name: *config.Name,
 		kind: "pvc",
