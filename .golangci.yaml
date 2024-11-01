@@ -11,6 +11,9 @@ linters-settings:
       - opinionated
       - performance
       - style
+    settings:
+      hugeParam:
+        sizeThreshold: 512
   govet:
     enable:
       # - fieldalignment
@@ -54,7 +57,7 @@ linters:
     - wsl
 issues:
   exclude-dirs:
-  - "example"
+    - "example"
   exclude-rules:
     - path: (.+)_test.go
       linters:
