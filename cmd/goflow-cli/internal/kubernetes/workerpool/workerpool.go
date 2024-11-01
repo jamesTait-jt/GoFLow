@@ -34,7 +34,10 @@ func HandlersPV(conf *config.Config) *acapiv1.PersistentVolumeApplyConfiguration
 				WithCapacity(apiv1.ResourceList{apiv1.ResourceStorage: resource.MustParse("1Gi")}).
 				WithAccessModes(apiv1.ReadWriteMany).
 				WithStorageClassName(storageClassName).
-				WithHostPath(acapiv1.HostPathVolumeSource().WithPath(conf.Workerpool.PathToHandlers)),
+				WithHostPath(
+					acapiv1.HostPathVolumeSource().
+						WithPath(conf.Workerpool.PathToHandlers),
+				),
 		)
 }
 
