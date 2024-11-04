@@ -2,6 +2,7 @@ package run
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes"
@@ -11,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
+
+var destroyTimeout = 30 * time.Second
 
 func Destroy(conf *config.Config, logger log.Logger) error {
 	logger.Info("Connecting to the Kubernetes cluster")
@@ -68,7 +71,7 @@ func destroyAndWait(kubeResource IdentifiableWatchableDeleter, kubeOperator *kub
 
 	logger.Info(fmt.Sprintf("'%s' needs destroying - waiting...", kubeResource.Name()))
 
-	if err := kubeOperator.WaitFor(kubeResource, []watch.EventType{watch.Deleted}); err != nil {
+	if err := kubeOperator.WaitFor(kubeResource, []watch.EventType{watch.Deleted}, destroyTimeout); err != nil {
 		return err
 	}
 

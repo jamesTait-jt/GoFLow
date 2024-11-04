@@ -2,6 +2,7 @@ package run
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes"
@@ -13,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
+
+var deployTimeout = 30 * time.Second
 
 // TODO: Accept a deployOpts struct or something
 func Deploy(conf *config.Config, logger log.Logger) error {
@@ -148,7 +151,7 @@ func applyAndWait(kubeResource IdentifiableWatchableApplyGetter, kubeOperator *k
 
 	logger.Info(fmt.Sprintf("'%s' needs modification - applying changes", kubeResource.Name()))
 
-	if err := kubeOperator.WaitFor(kubeResource, []watch.EventType{watch.Added, watch.Modified}); err != nil {
+	if err := kubeOperator.WaitFor(kubeResource, []watch.EventType{watch.Added, watch.Modified}, deployTimeout); err != nil {
 		return err
 	}
 
