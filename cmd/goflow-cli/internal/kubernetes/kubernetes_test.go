@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -395,6 +395,89 @@ func Test_Operator_Delete(t *testing.T) {
 	})
 }
 
+func Test_Operator_WaitFor(t *testing.T) {
+	t.Run("Doesn't return error if correct event type was found", func(t *testing.T) {
+		// Arrange
+		listOptions := metav1.ListOptions{}
+		mockResource := new(mockResource)
+		ctx := context.Background()
+		o := Operator{
+			ctx: ctx,
+		}
+
+		watcher := watch.NewFakeWithChanSize(1, false)
+		mockResource.On("Watch", ctx, listOptions).Once().Return(watcher, nil)
+
+		// Act
+		watcher.Add(&runtime.Unknown{})
+		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, time.Second)
+
+		// Assert
+		assert.NoError(t, err)
+		mockResource.AssertExpectations(t)
+	})
+
+	t.Run("Returns error if couldn't watch resource", func(t *testing.T) {
+		// Arrange
+		listOptions := metav1.ListOptions{}
+		mockResource := new(mockResource)
+		ctx := context.Background()
+		o := Operator{
+			ctx: ctx,
+		}
+
+		watchErr := errors.New("couldnt watch")
+		mockResource.On("Watch", ctx, listOptions).Once().Return(nil, watchErr)
+
+		// Act
+		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, time.Second)
+
+		// Assert
+		assert.EqualError(t, err, watchErr.Error())
+		mockResource.AssertExpectations(t)
+	})
+
+	t.Run("Returns an error if timed out", func(t *testing.T) {
+		// Arrange
+		listOptions := metav1.ListOptions{}
+		mockResource := new(mockResource)
+		ctx := context.Background()
+		o := Operator{
+			ctx: ctx,
+		}
+
+		watcher := watch.NewFake()
+		mockResource.On("Watch", ctx, listOptions).Once().Return(watcher, nil)
+
+		// Act
+		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, time.Millisecond)
+
+		// Assert
+		assert.EqualError(t, err, "timeout reached waiting for events")
+		mockResource.AssertExpectations(t)
+	})
+	t.Run("Returns an error if watcher channel closed", func(t *testing.T) {
+		// Arrange
+		listOptions := metav1.ListOptions{}
+		mockResource := new(mockResource)
+		ctx := context.Background()
+		o := Operator{
+			ctx: ctx,
+		}
+
+		watcher := watch.NewFake()
+		mockResource.On("Watch", ctx, listOptions).Once().Return(watcher, nil)
+
+		// Act
+		watcher.Stop()
+		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, 10*time.Second)
+
+		// Assert
+		assert.EqualError(t, err, "watcher channel closed unexpectedly")
+		mockResource.AssertExpectations(t)
+	})
+}
+
 func Test_NewClientSet(t *testing.T) {
 	t.Run("Returns clientset", func(t *testing.T) {
 		// Arrange
@@ -548,6 +631,16 @@ func (m *mockResource) Get(ctx context.Context, opts metav1.GetOptions) (runtime
 	return args.Get(0).(runtime.Object), args.Error(1)
 }
 
+func (m *mockResource) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	args := m.Called(ctx, opts)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(watch.Interface), args.Error(1)
+}
+
 type mockSpeccer struct {
 	mock.Mock
 }
@@ -593,13 +686,4 @@ func (m *mockClientsetBuilder) NewForConfig(config *rest.Config) (*kubernetes.Cl
 	}
 
 	return args.Get(0).(*kubernetes.Clientset), args.Error(1)
-}
-
-type MockEventWaiter struct {
-	mock.Mock
-}
-
-func (m *MockEventWaiter) WaitFor(resourceName, namespace string, eventTypes []watch.EventType, client resource.Watchable) error {
-	args := m.Called(resourceName, namespace, eventTypes, client)
-	return args.Error(0)
 }

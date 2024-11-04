@@ -13,7 +13,7 @@ var (
 	deploymentName                = "goflow-grpc-deployment"
 	deploymentContainerName       = "goflow-grpc-deployment-container"
 	serviceName                   = "goflow-grpc-service"
-	grpcPort                int32 = 50051
+	GRPCPort                int32 = 50051
 
 	labels = map[string]string{
 		"app": "goflow-grpc-server",
@@ -42,7 +42,7 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 												WithProtocol(
 													apiv1.ProtocolTCP,
 												).WithContainerPort(
-												grpcPort,
+												GRPCPort,
 											),
 										),
 								),
@@ -61,8 +61,8 @@ func Service(conf *config.Config) *acapiv1.ServiceApplyConfiguration {
 				WithLoadBalancerIP(conf.GoFlowServer.Address).
 				WithPorts(
 					acapiv1.ServicePort().
-						WithPort(grpcPort).
-						WithTargetPort(intstr.FromInt32(grpcPort)),
+						WithPort(GRPCPort).
+						WithTargetPort(intstr.FromInt32(GRPCPort)),
 				),
 		)
 }

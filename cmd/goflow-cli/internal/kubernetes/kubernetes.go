@@ -2,24 +2,40 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"reflect"
+	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
+	"github.com/jamesTait-jt/goflow/pkg/slice"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
-type Resource interface {
-	Name() string
-	Kind() string
-
+type Applier interface {
 	Apply(ctx context.Context, opts metav1.ApplyOptions) (runtime.Object, error)
-	Delete(ctx context.Context, opts metav1.DeleteOptions) error
+}
+
+type Getter interface {
 	Get(ctx context.Context, opts metav1.GetOptions) (runtime.Object, error)
+}
+
+type Deleter interface {
+	Delete(ctx context.Context, opts metav1.DeleteOptions) error
+}
+
+type Watcher interface {
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+}
+
+type ApplyGetter interface {
+	Applier
+	Getter
 }
 
 type speccer interface {
@@ -27,9 +43,8 @@ type speccer interface {
 }
 
 type Operator struct {
-	ctx    context.Context
-	logger log.Logger
-	// waiter            resource.EventWaiter
+	ctx     context.Context
+	logger  log.Logger
 	speccer speccer
 }
 
@@ -42,26 +57,23 @@ func NewOperator(opts ...OperatorOption) (*Operator, error) {
 
 	ctx := context.Background()
 
-	// eventWaiter := resource.NewWaiter(ctx, options.logger)
-
 	client := &Operator{
-		ctx:    ctx,
-		logger: options.logger,
-		// waiter:           eventWaiter,
+		ctx:     ctx,
+		logger:  options.logger,
 		speccer: &resource.ObjectSpeccer{},
 	}
 
 	return client, nil
 }
 
-func (o *Operator) Apply(r Resource) (bool, error) {
-	currResource, err := r.Get(o.ctx, metav1.GetOptions{})
+func (o *Operator) Apply(kubeResource ApplyGetter) (bool, error) {
+	currResource, err := kubeResource.Get(o.ctx, metav1.GetOptions{})
 
 	if err != nil && !k8serr.IsNotFound(err) {
 		return false, err
 	}
 
-	proposedResource, err := r.Apply(
+	proposedResource, err := kubeResource.Apply(
 		o.ctx,
 		metav1.ApplyOptions{FieldManager: "goflow-cli", DryRun: []string{"All"}},
 	)
@@ -85,13 +97,13 @@ func (o *Operator) Apply(r Resource) (bool, error) {
 		return false, nil
 	}
 
-	_, err = r.Apply(o.ctx, metav1.ApplyOptions{FieldManager: "goflow-cli"})
+	_, err = kubeResource.Apply(o.ctx, metav1.ApplyOptions{FieldManager: "goflow-cli"})
 
 	return err == nil, err
 }
 
-func (o *Operator) Delete(r Resource) (bool, error) {
-	err := r.Delete(o.ctx, metav1.DeleteOptions{})
+func (o *Operator) Delete(kubeResource Deleter) (bool, error) {
+	err := kubeResource.Delete(o.ctx, metav1.DeleteOptions{})
 
 	if err != nil {
 		// was not found - no need to delete
@@ -105,6 +117,35 @@ func (o *Operator) Delete(r Resource) (bool, error) {
 
 	// needed to delete
 	return true, nil
+}
+
+func (o *Operator) WaitFor(kubeResource Watcher, eventTypes []watch.EventType, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(o.ctx, timeout)
+	defer cancel()
+
+	watcher, err := kubeResource.Watch(o.ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	defer watcher.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Timeout or cancellation happened
+			return errors.New("timeout reached waiting for events")
+
+		case event, ok := <-watcher.ResultChan():
+			// Check if the channel was closed unexpectedly
+			if !ok {
+				return errors.New("watcher channel closed unexpectedly")
+			}
+
+			if slice.Contains(eventTypes, event.Type) {
+				return nil
+			}
+		}
+	}
 }
 
 type kubeConfigBuilder interface {

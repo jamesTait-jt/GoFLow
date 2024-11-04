@@ -50,7 +50,7 @@ func Test_Deployment(t *testing.T) {
 		assert.Len(t, container.Ports, 1)
 		port := container.Ports[0]
 		assert.Equal(t, apiv1.ProtocolTCP, *port.Protocol)
-		assert.Equal(t, grpcPort, *port.ContainerPort)
+		assert.Equal(t, GRPCPort, *port.ContainerPort)
 	})
 }
 
@@ -82,7 +82,7 @@ func Test_Service(t *testing.T) {
 
 		assert.Len(t, serviceConfig.Spec.Ports, 1)
 		port := serviceConfig.Spec.Ports[0]
-		assert.Equal(t, grpcPort, *port.Port)
-		assert.Equal(t, intstr.FromInt32(grpcPort), *port.TargetPort)
+		assert.Equal(t, GRPCPort, *port.Port)
+		assert.Equal(t, intstr.FromInt32(GRPCPort), *port.TargetPort)
 	})
 }

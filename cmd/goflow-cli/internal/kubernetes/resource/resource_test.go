@@ -11,6 +11,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
 
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -125,6 +126,67 @@ func Test_Resource_Get(t *testing.T) {
 	})
 }
 
+func Test_Resource_Watch(t *testing.T) {
+	type test struct {
+		name              string
+		inNamespace       string
+		inFieldSelector   string
+		wantFieldSelector string
+	}
+
+	tts := []test{
+		{"Sets field selector and calls watchFunc", "", "", "metadata.name=resourceName"},
+		{"Sets field selector and calls watchFunc with namespace", "resourceNamespace", "", "metadata.name=resourceName,metadata.namespace=resourceNamespace"},
+		{"Calls watchFunc without setting field selector if already set", "", "fieldSelectorInput", "fieldSelectorInput"},
+	}
+
+	for _, tt := range tts {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			called := false
+
+			var receivedCtx context.Context
+
+			var receivedOpts metav1.ListOptions
+
+			returnedWatcher := watch.NewEmptyWatch()
+			returnedErr := errors.New("error")
+			resourceName := "resourceName"
+
+			r := Resource{
+				name:      resourceName,
+				namespace: tt.inNamespace,
+				watchFunc: func(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+					called = true
+					receivedCtx = ctx
+					receivedOpts = opts
+
+					return returnedWatcher, returnedErr
+				},
+			}
+
+			sentCtx := context.Background()
+			sentOpts := metav1.ListOptions{
+				FieldSelector: tt.inFieldSelector,
+			}
+
+			// Act
+			actualRuntimeObject, actualErr := r.Watch(sentCtx, sentOpts)
+
+			// Assert
+			assert.True(t, called)
+			assert.Equal(t, sentCtx, receivedCtx)
+
+			sentOpts.FieldSelector = tt.wantFieldSelector
+			assert.Equal(t, sentOpts, receivedOpts)
+
+			assert.Equal(t, returnedWatcher, actualRuntimeObject)
+			assert.EqualError(t, returnedErr, actualErr.Error())
+		})
+	}
+
+}
+
 func Test_NewNamespace(t *testing.T) {
 	// Arrange
 	mockClient := new(mockNamespaceClient)
@@ -134,6 +196,7 @@ func Test_NewNamespace(t *testing.T) {
 	applyOptions := metav1.ApplyOptions{}
 	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
+	watchOptions := metav1.ListOptions{FieldSelector: "fieldSelector"}
 
 	returnedNamespace := &apiv1.Namespace{}
 	ctx := context.Background()
@@ -175,6 +238,17 @@ func Test_NewNamespace(t *testing.T) {
 		assert.Equal(t, returnedNamespace, result)
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Initialises watchFunc", func(t *testing.T) {
+		mockWatcher := watch.NewEmptyWatch()
+		mockClient.On("Watch", ctx, watchOptions).Return(mockWatcher, nil)
+		result, err := resource.Watch(ctx, watchOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, mockWatcher, result)
+		mockClient.AssertExpectations(t)
+	})
 }
 
 func Test_NewDeploymemt(t *testing.T) {
@@ -187,6 +261,7 @@ func Test_NewDeploymemt(t *testing.T) {
 	applyOptions := metav1.ApplyOptions{}
 	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
+	watchOptions := metav1.ListOptions{FieldSelector: "fieldSelector"}
 
 	returnedDeployment := &appsv1.Deployment{}
 	ctx := context.Background()
@@ -228,6 +303,17 @@ func Test_NewDeploymemt(t *testing.T) {
 		assert.Equal(t, returnedDeployment, result)
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Initialises watchFunc", func(t *testing.T) {
+		mockWatcher := watch.NewEmptyWatch()
+		mockClient.On("Watch", ctx, watchOptions).Return(mockWatcher, nil)
+		result, err := resource.Watch(ctx, watchOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, mockWatcher, result)
+		mockClient.AssertExpectations(t)
+	})
 }
 
 func Test_NewService(t *testing.T) {
@@ -240,6 +326,7 @@ func Test_NewService(t *testing.T) {
 	applyOptions := metav1.ApplyOptions{}
 	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
+	watchOptions := metav1.ListOptions{FieldSelector: "fieldSelector"}
 
 	returnedService := &apiv1.Service{}
 	ctx := context.Background()
@@ -281,6 +368,17 @@ func Test_NewService(t *testing.T) {
 		assert.Equal(t, returnedService, result)
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Initialises watchFunc", func(t *testing.T) {
+		mockWatcher := watch.NewEmptyWatch()
+		mockClient.On("Watch", ctx, watchOptions).Return(mockWatcher, nil)
+		result, err := resource.Watch(ctx, watchOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, mockWatcher, result)
+		mockClient.AssertExpectations(t)
+	})
 }
 
 func Test_NewPersistentVolume(t *testing.T) {
@@ -292,6 +390,7 @@ func Test_NewPersistentVolume(t *testing.T) {
 	applyOptions := metav1.ApplyOptions{}
 	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
+	watchOptions := metav1.ListOptions{FieldSelector: "fieldSelector"}
 
 	returnedPV := &apiv1.PersistentVolume{}
 	ctx := context.Background()
@@ -333,6 +432,17 @@ func Test_NewPersistentVolume(t *testing.T) {
 		assert.Equal(t, returnedPV, result)
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Initialises watchFunc", func(t *testing.T) {
+		mockWatcher := watch.NewEmptyWatch()
+		mockClient.On("Watch", ctx, watchOptions).Return(mockWatcher, nil)
+		result, err := resource.Watch(ctx, watchOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, mockWatcher, result)
+		mockClient.AssertExpectations(t)
+	})
 }
 
 func Test_NewPersistentVolumeClaim(t *testing.T) {
@@ -345,6 +455,7 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 	applyOptions := metav1.ApplyOptions{}
 	deleteOptions := metav1.DeleteOptions{}
 	getOptions := metav1.GetOptions{}
+	watchOptions := metav1.ListOptions{FieldSelector: "fieldSelector"}
 
 	returnedClaim := &apiv1.PersistentVolumeClaim{}
 	ctx := context.Background()
@@ -386,6 +497,17 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 		assert.Equal(t, returnedClaim, result)
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Initialises watchFunc", func(t *testing.T) {
+		mockWatcher := watch.NewEmptyWatch()
+		mockClient.On("Watch", ctx, watchOptions).Return(mockWatcher, nil)
+		result, err := resource.Watch(ctx, watchOptions)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, mockWatcher, result)
+		mockClient.AssertExpectations(t)
+	})
 }
 
 type mockBaseClient struct {
@@ -395,6 +517,11 @@ type mockBaseClient struct {
 func (m *mockBaseClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	args := m.Called(ctx, name, opts)
 	return args.Error(0)
+}
+
+func (m *mockBaseClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	args := m.Called(ctx, opts)
+	return args.Get(0).(watch.Interface), args.Error(1)
 }
 
 type mockNamespaceClient struct {
