@@ -2,15 +2,18 @@ package run
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/grpcserver"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func Push(taskType, payload, serverAddr string) error {
+	serverAddr = fmt.Sprintf("%s:%d", serverAddr, grpcserver.GRPCPort)
 	conn, err := grpc.NewClient(
 		serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)

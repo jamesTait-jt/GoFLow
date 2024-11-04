@@ -1,7 +1,7 @@
 goflow_server:
   image: "goflow-server:latest"
   replicas: 1
-  address: "127.0.0.1:50051"
+  address: "127.0.0.1"
 workerpool:
   image: "workerpool"
   replicas: 5
