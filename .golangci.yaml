@@ -27,7 +27,6 @@ linters:
     - bodyclose
     - copyloopvar
     - dogsled
-    - dupl
     - errcheck
     - exhaustive
     - goconst
