@@ -410,6 +410,7 @@ func Test_Operator_WaitFor(t *testing.T) {
 
 		// Act
 		watcher.Add(&runtime.Unknown{})
+
 		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, time.Second)
 
 		// Assert
@@ -470,6 +471,7 @@ func Test_Operator_WaitFor(t *testing.T) {
 
 		// Act
 		watcher.Stop()
+
 		err := o.WaitFor(mockResource, []watch.EventType{watch.Added}, 10*time.Second)
 
 		// Assert

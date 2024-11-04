@@ -184,7 +184,6 @@ func Test_Resource_Watch(t *testing.T) {
 			assert.EqualError(t, returnedErr, actualErr.Error())
 		})
 	}
-
 }
 
 func Test_NewNamespace(t *testing.T) {

@@ -17,9 +17,11 @@ func Push(taskType, payload, serverAddr string) error {
 	conn, err := grpc.NewClient(
 		serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
+
 	defer conn.Close()
 
 	goFlowClient := pb.NewGoFlowClient(conn)
@@ -28,6 +30,7 @@ func Push(taskType, payload, serverAddr string) error {
 	defer cancel()
 
 	r, err := goFlowClient.PushTask(ctx, &pb.PushTaskRequest{TaskType: taskType, Payload: payload})
+
 	if err != nil {
 		log.Fatalf("could not push: %v", err)
 	}
