@@ -23,10 +23,9 @@ func Test_NewOperator(t *testing.T) {
 	t.Run("Initialises Operator", func(t *testing.T) {
 		// Arrange
 		// Act
-		kube, err := NewOperator()
+		kube := NewOperator()
 
 		// Assert
-		assert.Nil(t, err)
 		assert.NotNil(t, kube.ctx)
 		assert.NotNil(t, kube.speccer)
 	})

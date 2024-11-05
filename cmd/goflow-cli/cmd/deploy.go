@@ -33,17 +33,9 @@ func Deploy() error {
 		return err
 	}
 
-	kubeOperator, err := k8s.NewOperator()
-	if err != nil {
-		return err
-	}
+	kubeDeploymentManager := k8s.NewDeploymentManager(conf, logger, clientset)
 
-	kubeDeployer, err := k8s.NewDeployer(conf, logger, clientset, kubeOperator)
-	if err != nil {
-		return err
-	}
-
-	deploymentService := service.NewDeploymentService(kubeDeployer)
+	deploymentService := service.NewDeploymentService(kubeDeploymentManager)
 
 	return deploymentService.Deploy()
 }

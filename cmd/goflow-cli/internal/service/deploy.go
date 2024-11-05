@@ -2,7 +2,7 @@ package service
 
 import "fmt"
 
-type deployer interface {
+type deploymentManager interface {
 	DeployNamespace() error
 	DeployMessageBroker() error
 	DeployGRPCServer() error
@@ -11,29 +11,29 @@ type deployer interface {
 }
 
 type DeploymentService struct {
-	deployer deployer
+	deploymentManager deploymentManager
 }
 
-func NewDeploymentService(d deployer) *DeploymentService {
+func NewDeploymentService(d deploymentManager) *DeploymentService {
 	return &DeploymentService{
-		deployer: d,
+		deploymentManager: d,
 	}
 }
 
 func (d *DeploymentService) Deploy() error {
-	if err := d.deployer.DeployNamespace(); err != nil {
+	if err := d.deploymentManager.DeployNamespace(); err != nil {
 		return fmt.Errorf("failed to deploy namespace: %w", err)
 	}
 
-	if err := d.deployer.DeployMessageBroker(); err != nil {
+	if err := d.deploymentManager.DeployMessageBroker(); err != nil {
 		return fmt.Errorf("failed to deploy message broker: %w", err)
 	}
 
-	if err := d.deployer.DeployGRPCServer(); err != nil {
+	if err := d.deploymentManager.DeployGRPCServer(); err != nil {
 		return fmt.Errorf("failed to deploy gRPC server: %w", err)
 	}
 
-	if err := d.deployer.DeployWorkerpools(); err != nil {
+	if err := d.deploymentManager.DeployWorkerpools(); err != nil {
 		return fmt.Errorf("failed to deploy worker pools: %w", err)
 	}
 
@@ -41,5 +41,5 @@ func (d *DeploymentService) Deploy() error {
 }
 
 func (d *DeploymentService) Destroy() error {
-	return d.deployer.DestroyAll()
+	return d.deploymentManager.DestroyAll()
 }

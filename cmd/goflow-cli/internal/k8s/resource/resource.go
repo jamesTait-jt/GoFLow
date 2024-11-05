@@ -122,13 +122,13 @@ func NewDeployment(config *acappsv1.DeploymentApplyConfiguration, client Deploym
 	}
 }
 
-type ServicesInterface interface {
+type ServiceInterface interface {
 	baseInterface
 	Apply(ctx context.Context, service *acapiv1.ServiceApplyConfiguration, opts metav1.ApplyOptions) (*apiv1.Service, error)
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiv1.Service, error)
 }
 
-func NewService(config *acapiv1.ServiceApplyConfiguration, client ServicesInterface) *Resource {
+func NewService(config *acapiv1.ServiceApplyConfiguration, client ServiceInterface) *Resource {
 	name := *config.Name
 
 	return &Resource{

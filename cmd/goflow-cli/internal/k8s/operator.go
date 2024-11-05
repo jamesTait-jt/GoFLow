@@ -44,15 +44,13 @@ type Operator struct {
 	speccer speccer
 }
 
-func NewOperator() (*Operator, error) {
+func NewOperator() *Operator {
 	ctx := context.Background()
 
-	client := &Operator{
+	return &Operator{
 		ctx:     ctx,
 		speccer: &resource.ObjectSpeccer{},
 	}
-
-	return client, nil
 }
 
 func (o *Operator) Apply(kubeResource ApplyGetter) (bool, error) {

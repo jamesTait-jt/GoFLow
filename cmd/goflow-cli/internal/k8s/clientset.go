@@ -1,9 +1,8 @@
 package k8s
 
 import (
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
 	"k8s.io/client-go/kubernetes"
-	typedappsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
-	typedapiv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -50,18 +49,18 @@ func NewClientset(clusterURL, namespace string, opts ...BuildClientsetOption) (*
 }
 
 // TODO: Optimise this so they are only called once
-func (c *Clients) Namespaces() typedapiv1.NamespaceInterface {
+func (c *Clients) Namespaces() resource.NamespaceInterface {
 	return c.clientset.CoreV1().Namespaces()
 }
-func (c *Clients) Deployments() typedappsv1.DeploymentInterface {
+func (c *Clients) Deployments() resource.DeploymentInterface {
 	return c.clientset.AppsV1().Deployments(c.namespace)
 }
-func (c *Clients) Services() typedapiv1.ServiceInterface {
+func (c *Clients) Services() resource.ServiceInterface {
 	return c.clientset.CoreV1().Services(c.namespace)
 }
-func (c *Clients) PersistentVolumes() typedapiv1.PersistentVolumeInterface {
+func (c *Clients) PersistentVolumes() resource.PersistentVolumeInterface {
 	return c.clientset.CoreV1().PersistentVolumes()
 }
-func (c *Clients) PersistentVolumeClaims() typedapiv1.PersistentVolumeClaimInterface {
+func (c *Clients) PersistentVolumeClaims() resource.PersistentVolumeClaimInterface {
 	return c.clientset.CoreV1().PersistentVolumeClaims(c.namespace)
 }
