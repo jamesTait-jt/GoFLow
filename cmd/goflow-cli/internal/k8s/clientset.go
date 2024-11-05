@@ -16,12 +16,12 @@ type clientSetBuilder interface {
 	NewForConfig(config *rest.Config) (*kubernetes.Clientset, error)
 }
 
-type K8sClients struct {
+type Clients struct {
 	clientset kubernetes.Interface
 	namespace string
 }
 
-func NewClientset(clusterURL, namespace string, opts ...BuildClientsetOption) (*K8sClients, error) {
+func NewClientset(clusterURL, namespace string, opts ...BuildClientsetOption) (*Clients, error) {
 	options := defaultBuildClientsetOptions()
 
 	for _, o := range opts {
@@ -43,24 +43,25 @@ func NewClientset(clusterURL, namespace string, opts ...BuildClientsetOption) (*
 		return nil, err
 	}
 
-	return &K8sClients{
+	return &Clients{
 		clientset: clientset,
 		namespace: namespace,
 	}, nil
 }
 
-func (c *K8sClients) Namespaces() typedapiv1.NamespaceInterface {
+// TODO: Optimise this so they are only called once
+func (c *Clients) Namespaces() typedapiv1.NamespaceInterface {
 	return c.clientset.CoreV1().Namespaces()
 }
-func (c *K8sClients) Deployments() typedappsv1.DeploymentInterface {
+func (c *Clients) Deployments() typedappsv1.DeploymentInterface {
 	return c.clientset.AppsV1().Deployments(c.namespace)
 }
-func (c *K8sClients) Services() typedapiv1.ServiceInterface {
+func (c *Clients) Services() typedapiv1.ServiceInterface {
 	return c.clientset.CoreV1().Services(c.namespace)
 }
-func (c *K8sClients) PersistentVolumes() typedapiv1.PersistentVolumeInterface {
+func (c *Clients) PersistentVolumes() typedapiv1.PersistentVolumeInterface {
 	return c.clientset.CoreV1().PersistentVolumes()
 }
-func (c *K8sClients) PersistentVolumeClaims() typedapiv1.PersistentVolumeClaimInterface {
+func (c *Clients) PersistentVolumeClaims() typedapiv1.PersistentVolumeClaimInterface {
 	return c.clientset.CoreV1().PersistentVolumeClaims(c.namespace)
 }

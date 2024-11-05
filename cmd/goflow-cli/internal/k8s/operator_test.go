@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -23,17 +22,13 @@ import (
 func Test_NewOperator(t *testing.T) {
 	t.Run("Initialises Operator", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(log.TestifyMock)
-
 		// Act
-		kube, err := NewOperator(
-			WithLogger(mockLogger),
-		)
+		kube, err := NewOperator()
 
 		// Assert
 		assert.Nil(t, err)
 		assert.NotNil(t, kube.ctx)
-		assert.Equal(t, mockLogger, kube.logger)
+		assert.NotNil(t, kube.speccer)
 	})
 }
 

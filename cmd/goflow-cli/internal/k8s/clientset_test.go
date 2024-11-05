@@ -26,7 +26,7 @@ func Test_NewClientSet(t *testing.T) {
 		clientset := &kubernetes.Clientset{}
 		mockClientsetBuilder.On("NewForConfig", kubeConfig).Once().Return(clientset, nil)
 
-		expectedK8sClients := &K8sClients{
+		expectedK8sClients := &Clients{
 			clientset: clientset,
 			namespace: namespace,
 		}

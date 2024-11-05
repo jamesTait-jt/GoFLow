@@ -1,33 +1,5 @@
 package k8s
 
-import "github.com/jamesTait-jt/goflow/pkg/log"
-
-type OperatorOption interface {
-	apply(*operatorOptions)
-}
-
-type operatorOptions struct {
-	logger log.Logger
-}
-
-func defaultOperatorOptions() operatorOptions {
-	return operatorOptions{
-		logger: log.NewConsoleLogger(),
-	}
-}
-
-type loggerOption struct {
-	Logger log.Logger
-}
-
-func (l loggerOption) apply(opts *operatorOptions) {
-	opts.logger = l.Logger
-}
-
-func WithLogger(logger log.Logger) OperatorOption {
-	return loggerOption{Logger: logger}
-}
-
 type BuildClientsetOption interface {
 	apply(*buildClientsetOptions)
 }

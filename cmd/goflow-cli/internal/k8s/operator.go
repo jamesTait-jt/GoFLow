@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/slice"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,22 +41,14 @@ type speccer interface {
 
 type Operator struct {
 	ctx     context.Context
-	logger  log.Logger
 	speccer speccer
 }
 
-func NewOperator(opts ...OperatorOption) (*Operator, error) {
-	options := defaultOperatorOptions()
-
-	for _, o := range opts {
-		o.apply(&options)
-	}
-
+func NewOperator() (*Operator, error) {
 	ctx := context.Background()
 
 	client := &Operator{
 		ctx:     ctx,
-		logger:  options.logger,
 		speccer: &resource.ObjectSpeccer{},
 	}
 
