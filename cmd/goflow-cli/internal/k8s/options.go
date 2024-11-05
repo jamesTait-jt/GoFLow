@@ -1,4 +1,4 @@
-package kubernetes
+package k8s
 
 import "github.com/jamesTait-jt/goflow/pkg/log"
 

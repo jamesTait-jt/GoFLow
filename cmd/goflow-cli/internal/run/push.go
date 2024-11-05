@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/grpcserver"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/grpcserver"
 	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

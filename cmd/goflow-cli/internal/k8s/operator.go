@@ -1,4 +1,4 @@
-package kubernetes
+package k8s
 
 import (
 	"context"
@@ -6,15 +6,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/kubernetes/resource"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/slice"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 type Applier interface {
@@ -146,33 +144,4 @@ func (o *Operator) WaitFor(kubeResource Watcher, eventTypes []watch.EventType, t
 			}
 		}
 	}
-}
-
-type kubeConfigBuilder interface {
-	GetKubeConfigPath() (string, error)
-	BuildConfig(clusterURL, kubeConfigPath string) (*rest.Config, error)
-}
-
-type clientSetBuilder interface {
-	NewForConfig(config *rest.Config) (*kubernetes.Clientset, error)
-}
-
-func NewClientset(clusterURL string, opts ...BuildClientsetOption) (kubernetes.Interface, error) {
-	options := defaultBuildClientsetOptions()
-
-	for _, o := range opts {
-		o.apply(&options)
-	}
-
-	kubeConfigPath, err := options.configBuilder.GetKubeConfigPath()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeConfig, err := options.configBuilder.BuildConfig(clusterURL, kubeConfigPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return options.kubeClientBuilder.NewForConfig(kubeConfig)
 }
