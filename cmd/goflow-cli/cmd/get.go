@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/grpcserver"
@@ -32,7 +33,7 @@ var getCmd = &cobra.Command{
 
 		goFlowClient := pb.NewGoFlowClient(conn)
 		logger := log.NewConsoleLogger()
-		goFlowService := service.NewGoFlowService(goFlowClient, logger)
+		goFlowService := service.NewGoFlowService(goFlowClient, 30*time.Second, logger)
 
 		taskResult, err := goFlowService.Get(args[0])
 		if err != nil {
