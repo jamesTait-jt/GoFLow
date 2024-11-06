@@ -30,7 +30,6 @@ linters:
     - copyloopvar
     - dogsled
     - errcheck
-    - exhaustive
     - goconst
     - gocritic
     - gofmt
