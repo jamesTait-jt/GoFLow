@@ -7,6 +7,7 @@ import (
 	"github.com/jamesTait-jt/goflow/broker"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/plugin"
+	"github.com/jamesTait-jt/goflow/cmd/workerpool/service"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
@@ -16,11 +17,6 @@ import (
 
 func main() {
 	conf := config.LoadConfigFromFlags()
-
-	pool := workerpool.New(conf.NumWorkers)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	taskQueue, resultQueue, err := initialiseBrokers(conf.BrokerType, conf.BrokerAddr)
 	if err != nil {
@@ -36,8 +32,13 @@ func main() {
 		return
 	}
 
-	pool.Start(ctx, taskQueue, resultQueue, taskHandlers)
-	pool.AwaitShutdown()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pool := workerpool.New(conf.NumWorkers)
+
+	workerpoolService := service.NewWorkerpoolService(pool, taskQueue, resultQueue, taskHandlers)
+	workerpoolService.Start(ctx)
 }
 
 func initialiseBrokers(brokerType, brokerAddr string) (task.Dequeuer[task.Task], task.Submitter[task.Result], error) {
