@@ -48,10 +48,12 @@ func (c *ConsoleLogger) Error(msg string) {
 	c.logger.Println(errMsg)
 }
 
+var spinnerTime = 100 * time.Millisecond
+
 func (c *ConsoleLogger) Waiting(msg string) func(doneMsg string, success bool) {
 	c.Info(fmt.Sprintf("⏳ %s", msg))
 
-	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	s := spinner.New(spinner.CharSets[9], spinnerTime)
 	s.Start()
 
 	// Return a function to stop the spinner and mark completion

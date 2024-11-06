@@ -25,7 +25,7 @@ func Load(pluginDir string) (map[string]*plugin.Plugin, error) {
 			return nil, err
 		}
 
-		fmt.Println(fmt.Sprintf("%s/%s", pluginDir, files[i].Name()))
+		fmt.Printf("%s/%s\n", pluginDir, files[i].Name())
 
 		pluginName := strings.TrimSuffix(files[i].Name(), ".so")
 

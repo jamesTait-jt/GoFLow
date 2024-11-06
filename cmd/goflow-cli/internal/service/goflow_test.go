@@ -134,7 +134,7 @@ type mockGoFlowClient struct {
 	mock.Mock
 }
 
-func (m *mockGoFlowClient) PushTask(ctx context.Context, req *pb.PushTaskRequest, opts ...grpc.CallOption) (*pb.PushTaskReply, error) {
+func (m *mockGoFlowClient) PushTask(ctx context.Context, req *pb.PushTaskRequest, _ ...grpc.CallOption) (*pb.PushTaskReply, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -143,7 +143,7 @@ func (m *mockGoFlowClient) PushTask(ctx context.Context, req *pb.PushTaskRequest
 	return args.Get(0).(*pb.PushTaskReply), args.Error(1)
 }
 
-func (m *mockGoFlowClient) GetResult(ctx context.Context, req *pb.GetResultRequest, opts ...grpc.CallOption) (*pb.GetResultReply, error) {
+func (m *mockGoFlowClient) GetResult(ctx context.Context, req *pb.GetResultRequest, _ ...grpc.CallOption) (*pb.GetResultReply, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
