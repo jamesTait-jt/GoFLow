@@ -19,7 +19,6 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	GoFlow_SayHello_FullMethodName  = "/goflow.GoFlow/SayHello"
 	GoFlow_PushTask_FullMethodName  = "/goflow.GoFlow/PushTask"
 	GoFlow_GetResult_FullMethodName = "/goflow.GoFlow/GetResult"
 )
@@ -28,7 +27,6 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GoFlowClient interface {
-	SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
 	PushTask(ctx context.Context, in *PushTaskRequest, opts ...grpc.CallOption) (*PushTaskReply, error)
 	GetResult(ctx context.Context, in *GetResultRequest, opts ...grpc.CallOption) (*GetResultReply, error)
 }
@@ -39,15 +37,6 @@ type goFlowClient struct {
 
 func NewGoFlowClient(cc grpc.ClientConnInterface) GoFlowClient {
 	return &goFlowClient{cc}
-}
-
-func (c *goFlowClient) SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error) {
-	out := new(HelloReply)
-	err := c.cc.Invoke(ctx, GoFlow_SayHello_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *goFlowClient) PushTask(ctx context.Context, in *PushTaskRequest, opts ...grpc.CallOption) (*PushTaskReply, error) {
@@ -72,7 +61,6 @@ func (c *goFlowClient) GetResult(ctx context.Context, in *GetResultRequest, opts
 // All implementations must embed UnimplementedGoFlowServer
 // for forward compatibility
 type GoFlowServer interface {
-	SayHello(context.Context, *HelloRequest) (*HelloReply, error)
 	PushTask(context.Context, *PushTaskRequest) (*PushTaskReply, error)
 	GetResult(context.Context, *GetResultRequest) (*GetResultReply, error)
 	mustEmbedUnimplementedGoFlowServer()
@@ -82,9 +70,6 @@ type GoFlowServer interface {
 type UnimplementedGoFlowServer struct {
 }
 
-func (UnimplementedGoFlowServer) SayHello(context.Context, *HelloRequest) (*HelloReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
-}
 func (UnimplementedGoFlowServer) PushTask(context.Context, *PushTaskRequest) (*PushTaskReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushTask not implemented")
 }
@@ -102,24 +87,6 @@ type UnsafeGoFlowServer interface {
 
 func RegisterGoFlowServer(s grpc.ServiceRegistrar, srv GoFlowServer) {
 	s.RegisterService(&GoFlow_ServiceDesc, srv)
-}
-
-func _GoFlow_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HelloRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GoFlowServer).SayHello(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GoFlow_SayHello_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GoFlowServer).SayHello(ctx, req.(*HelloRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _GoFlow_PushTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -165,10 +132,6 @@ var GoFlow_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "goflow.GoFlow",
 	HandlerType: (*GoFlowServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SayHello",
-			Handler:    _GoFlow_SayHello_Handler,
-		},
 		{
 			MethodName: "PushTask",
 			Handler:    _GoFlow_PushTask_Handler,

@@ -1,9 +1,16 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/run"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/grpcserver"
+	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/service"
+	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var getCmd = &cobra.Command{
@@ -16,7 +23,25 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		return run.Get(args[0], conf.GoFlowServer.Address)
+		serverAddr := fmt.Sprintf("%s:%d", conf.GoFlowServer.Address, grpcserver.GRPCPort)
+		conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		goFlowClient := pb.NewGoFlowClient(conn)
+		logger := log.NewConsoleLogger()
+		goFlowService := service.NewGoFlowService(goFlowClient, logger)
+
+		taskResult, err := goFlowService.Get(args[0])
+		if err != nil {
+			return err
+		}
+
+		logger.Info(fmt.Sprintf("Task result: '%s'", taskResult))
+
+		return nil
 	},
 }
 

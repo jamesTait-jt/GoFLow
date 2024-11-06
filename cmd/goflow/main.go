@@ -27,11 +27,6 @@ type server struct {
 	gf *goflow.GoFlow
 }
 
-func (s *server) SayHello(_ context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-}
-
 func (s *server) PushTask(_ context.Context, in *pb.PushTaskRequest) (*pb.PushTaskReply, error) {
 	log.Printf("Received push task: [%s] [%s]", in.GetTaskType(), in.GetPayload())
 

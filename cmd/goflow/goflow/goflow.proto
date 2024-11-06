@@ -5,17 +5,8 @@ option go_package = "github.com/jamesTait-jt/goflow/cmd/goflow/goflow";
 package goflow;
 
 service GoFlow {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
   rpc PushTask (PushTaskRequest) returns (PushTaskReply) {}
   rpc GetResult (GetResultRequest) returns (GetResultReply) {}
-}
-
-message HelloRequest {
-  string name = 1;
-}
-
-message HelloReply {
-  string message = 1;
 }
 
 message PushTaskRequest {
