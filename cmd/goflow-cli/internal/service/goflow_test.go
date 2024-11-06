@@ -140,7 +140,7 @@ func (m *mockGoFlowClient) PushTask(ctx context.Context, req *pb.PushTaskRequest
 		return nil, args.Error(1)
 	}
 
-	return nil, args.Error(1)
+	return args.Get(0).(*pb.PushTaskReply), args.Error(1)
 }
 
 func (m *mockGoFlowClient) GetResult(ctx context.Context, req *pb.GetResultRequest, opts ...grpc.CallOption) (*pb.GetResultReply, error) {
@@ -149,5 +149,5 @@ func (m *mockGoFlowClient) GetResult(ctx context.Context, req *pb.GetResultReque
 		return nil, args.Error(1)
 	}
 
-	return nil, args.Error(1)
+	return args.Get(0).(*pb.GetResultReply), args.Error(1)
 }
