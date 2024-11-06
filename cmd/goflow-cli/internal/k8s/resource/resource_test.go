@@ -186,7 +186,7 @@ func Test_Resource_Watch(t *testing.T) {
 	}
 }
 
-func Test_NewNamespace(t *testing.T) {
+func Test_Factory_CreateNamespace(t *testing.T) {
 	// Arrange
 	mockClient := new(mockNamespaceClient)
 	namespaceName := "test-namespace"
@@ -200,8 +200,12 @@ func Test_NewNamespace(t *testing.T) {
 	returnedNamespace := &apiv1.Namespace{}
 	ctx := context.Background()
 
+	f := &Factory{
+		namespaceClient: mockClient,
+	}
+
 	// Act
-	resource := NewNamespace(config, mockClient)
+	resource := f.CreateNamespace(config)
 
 	t.Run("Initialises name and kind", func(t *testing.T) {
 		// Assert
@@ -265,8 +269,12 @@ func Test_NewDeploymemt(t *testing.T) {
 	returnedDeployment := &appsv1.Deployment{}
 	ctx := context.Background()
 
+	f := &Factory{
+		deploymentClient: mockClient,
+	}
+
 	// Act
-	resource := NewDeployment(config, mockClient)
+	resource := f.CreateDeployment(config)
 
 	t.Run("Initialises name and kind", func(t *testing.T) {
 		// Assert
@@ -330,8 +338,12 @@ func Test_NewService(t *testing.T) {
 	returnedService := &apiv1.Service{}
 	ctx := context.Background()
 
+	f := &Factory{
+		serviceClient: mockClient,
+	}
+
 	// Act
-	resource := NewService(config, mockClient)
+	resource := f.CreateService(config)
 
 	t.Run("Initialises name and kind", func(t *testing.T) {
 		// Assert
@@ -394,8 +406,10 @@ func Test_NewPersistentVolume(t *testing.T) {
 	returnedPV := &apiv1.PersistentVolume{}
 	ctx := context.Background()
 
+	f := &Factory{persistentVolumeClient: mockClient}
+
 	// Act
-	resource := NewPersistentVolume(config, mockClient)
+	resource := f.CreatePersistentVolume(config)
 
 	t.Run("Initialises name and kind", func(t *testing.T) {
 		// Assert
@@ -459,8 +473,12 @@ func Test_NewPersistentVolumeClaim(t *testing.T) {
 	returnedClaim := &apiv1.PersistentVolumeClaim{}
 	ctx := context.Background()
 
+	f := &Factory{
+		persistentVolumeClaimClient: mockClient,
+	}
+
 	// Act
-	resource := NewPersistentVolumeClaim(config, mockClient)
+	resource := f.CreatePersistentVolumeClaim(config)
 
 	t.Run("Initialises name and kind", func(t *testing.T) {
 		// Assert

@@ -5,6 +5,8 @@ linters-settings:
     min-len: 2
     min-occurrences: 3
   gocritic:
+    disabled-checks:
+      - sloppyReassign
     enabled-tags:
       - diagnostic
       - experimental
