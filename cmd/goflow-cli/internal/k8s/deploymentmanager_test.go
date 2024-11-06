@@ -897,28 +897,28 @@ type mockResourceFactory struct {
 	mock.Mock
 }
 
-func (m *mockResourceFactory) CreateNamespace(config *acapiv1.NamespaceApplyConfiguration) *resource.Resource {
-	args := m.Called(config)
+func (m *mockResourceFactory) CreateNamespace(conf *acapiv1.NamespaceApplyConfiguration) *resource.Resource {
+	args := m.Called(conf)
 	return args.Get(0).(*resource.Resource)
 }
 
-func (m *mockResourceFactory) CreateDeployment(config *acappsv1.DeploymentApplyConfiguration) *resource.Resource {
-	args := m.Called(config)
+func (m *mockResourceFactory) CreateDeployment(conf *acappsv1.DeploymentApplyConfiguration) *resource.Resource {
+	args := m.Called(conf)
 	return args.Get(0).(*resource.Resource)
 }
 
-func (m *mockResourceFactory) CreateService(config *acapiv1.ServiceApplyConfiguration) *resource.Resource {
-	args := m.Called(config)
+func (m *mockResourceFactory) CreateService(conf *acapiv1.ServiceApplyConfiguration) *resource.Resource {
+	args := m.Called(conf)
 	return args.Get(0).(*resource.Resource)
 }
 
-func (m *mockResourceFactory) CreatePersistentVolume(config *acapiv1.PersistentVolumeApplyConfiguration) *resource.Resource {
-	args := m.Called(config)
+func (m *mockResourceFactory) CreatePersistentVolume(conf *acapiv1.PersistentVolumeApplyConfiguration) *resource.Resource {
+	args := m.Called(conf)
 	return args.Get(0).(*resource.Resource)
 }
 
-func (m *mockResourceFactory) CreatePersistentVolumeClaim(config *acapiv1.PersistentVolumeClaimApplyConfiguration) *resource.Resource {
-	args := m.Called(config)
+func (m *mockResourceFactory) CreatePersistentVolumeClaim(conf *acapiv1.PersistentVolumeClaimApplyConfiguration) *resource.Resource {
+	args := m.Called(conf)
 	return args.Get(0).(*resource.Resource)
 }
 
