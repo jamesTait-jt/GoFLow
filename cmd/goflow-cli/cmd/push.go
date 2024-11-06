@@ -31,7 +31,7 @@ var pushCmd = &cobra.Command{
 
 		return nil
 	},
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		conf, err := config.Get()
 		if err != nil {
 			return err
@@ -54,7 +54,7 @@ var pushCmd = &cobra.Command{
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("TaskID: '%s'", taskID))
+		cmd.Printf("TaskID: '%s'\n", taskID)
 
 		return nil
 	},

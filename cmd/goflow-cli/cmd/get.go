@@ -18,7 +18,7 @@ var getCmd = &cobra.Command{
 	Use:   "get [taskID]",
 	Short: "get the result of a task execution",
 	Args:  cobra.MatchAll(cobra.ExactArgs(1)),
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		conf, err := config.Get()
 		if err != nil {
 			return err
@@ -41,7 +41,7 @@ var getCmd = &cobra.Command{
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Task result: '%s'", taskResult))
+		cmd.Printf("Task result: '%s'\n", taskResult)
 
 		return nil
 	},
