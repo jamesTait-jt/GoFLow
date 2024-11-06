@@ -26,7 +26,7 @@ func (cm *ConfigMapper) GetNamespaceConfig(key resource.Key) (*acapiv1.Namespace
 		return acapiv1.Namespace(cm.conf.Kubernetes.Namespace), nil
 
 	default:
-		return nil, fmt.Errorf("didnt recognise namespace resource key '%s'", key)
+		return nil, fmt.Errorf("didnt recognise namespace resource key '%d'", key)
 	}
 }
 
@@ -42,7 +42,7 @@ func (cm *ConfigMapper) GetDeploymentConfig(key resource.Key) (*acappsv1.Deploym
 		return workerpool.Deployment(cm.conf), nil
 
 	default:
-		return nil, fmt.Errorf("didnt recognise deployment resource key '%s'", key)
+		return nil, fmt.Errorf("didnt recognise deployment resource key '%d'", key)
 	}
 }
 
@@ -55,7 +55,7 @@ func (cm *ConfigMapper) GetServiceConfig(key resource.Key) (*acapiv1.ServiceAppl
 		return redis.Service(cm.conf), nil
 
 	default:
-		return nil, fmt.Errorf("didnt recognise service resource key '%s'", key)
+		return nil, fmt.Errorf("didnt recognise service resource key '%d'", key)
 	}
 }
 
@@ -65,7 +65,7 @@ func (cm *ConfigMapper) GetPersistentVolumeConfig(key resource.Key) (*acapiv1.Pe
 		return workerpool.HandlersPV(cm.conf), nil
 
 	default:
-		return nil, fmt.Errorf("didnt recognise persistent volume resource key '%s'", key)
+		return nil, fmt.Errorf("didnt recognise persistent volume resource key '%d'", key)
 	}
 }
 
@@ -75,6 +75,6 @@ func (cm *ConfigMapper) GetPersistentVolumeClaimConfig(key resource.Key) (*acapi
 		return workerpool.HandlersPVC(cm.conf), nil
 
 	default:
-		return nil, fmt.Errorf("didnt recognise persistent volume claim resource key '%s'", key)
+		return nil, fmt.Errorf("didnt recognise persistent volume claim resource key '%d'", key)
 	}
 }
