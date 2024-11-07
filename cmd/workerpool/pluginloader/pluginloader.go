@@ -2,19 +2,32 @@ package pluginloader
 
 import (
 	"fmt"
-	"os"
+	"io/fs"
 	"plugin"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 type SymbolFinder interface {
 	Lookup(symName string) (plugin.Symbol, error)
 }
 
-type Loader struct{}
+type dirReader func(string) ([]fs.DirEntry, error)
+
+type pluginOpener func(path string) (*plugin.Plugin, error)
+
+type Loader struct {
+	fs         afero.Fs
+	openPlugin pluginOpener
+}
+
+func New(fs afero.Fs, openPlugin pluginOpener) *Loader {
+	return &Loader{fs: fs, openPlugin: openPlugin}
+}
 
 func (l *Loader) Load(pluginDir string) (map[string]SymbolFinder, error) {
-	files, err := os.ReadDir(pluginDir)
+	files, err := afero.ReadDir(l.fs, pluginDir)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +35,7 @@ func (l *Loader) Load(pluginDir string) (map[string]SymbolFinder, error) {
 	plugins := make(map[string]SymbolFinder, len(files))
 
 	for i := 0; i < len(files); i++ {
-		plg, err := plugin.Open(fmt.Sprintf("%s/%s", pluginDir, files[i].Name()))
+		plg, err := l.openPlugin(fmt.Sprintf("%s/%s", pluginDir, files[i].Name()))
 		if err != nil {
 			return nil, err
 		}

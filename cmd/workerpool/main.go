@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"plugin"
 
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/pluginloader"
@@ -12,6 +13,7 @@ import (
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/afero"
 )
 
 func main() {
@@ -19,7 +21,9 @@ func main() {
 
 	pool := workerpool.New(conf.NumWorkers)
 
-	taskHandlers, err := taskhandlers.Load(&pluginloader.Loader{}, conf.HandlersPath)
+	pluginLoader := pluginloader.New(afero.NewOsFs(), plugin.Open)
+
+	taskHandlers, err := taskhandlers.Load(pluginLoader, conf.HandlersPath)
 	if err != nil {
 		fmt.Println(err)
 
