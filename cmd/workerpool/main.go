@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/config"
+	"github.com/jamesTait-jt/goflow/cmd/workerpool/pluginloader"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/service"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/taskhandlers"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
@@ -18,7 +19,7 @@ func main() {
 
 	pool := workerpool.New(conf.NumWorkers)
 
-	taskHandlers, err := taskhandlers.Load(conf.HandlersPath)
+	taskHandlers, err := taskhandlers.Load(&pluginloader.Loader{}, conf.HandlersPath)
 	if err != nil {
 		fmt.Println(err)
 

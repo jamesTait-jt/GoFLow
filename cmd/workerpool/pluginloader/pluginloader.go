@@ -1,4 +1,4 @@
-package plugin
+package pluginloader
 
 import (
 	"fmt"
@@ -7,17 +7,19 @@ import (
 	"strings"
 )
 
-type HandlerPlugin interface {
-	Handle(payload any) any
+type SymbolFinder interface {
+	Lookup(symName string) (plugin.Symbol, error)
 }
 
-func Load(pluginDir string) (map[string]*plugin.Plugin, error) {
+type Loader struct{}
+
+func (l *Loader) Load(pluginDir string) (map[string]SymbolFinder, error) {
 	files, err := os.ReadDir(pluginDir)
 	if err != nil {
 		return nil, err
 	}
 
-	plugins := make(map[string]*plugin.Plugin, len(files))
+	plugins := make(map[string]SymbolFinder, len(files))
 
 	for i := 0; i < len(files); i++ {
 		plg, err := plugin.Open(fmt.Sprintf("%s/%s", pluginDir, files[i].Name()))

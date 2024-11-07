@@ -5,6 +5,7 @@ import (
 	"plugin"
 	"testing"
 
+	"github.com/jamesTait-jt/goflow/cmd/workerpool/pluginloader"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -22,7 +23,7 @@ func Test_Load(t *testing.T) {
 		pluginTwo := &mockSymbolFinder{}
 
 		pluginLoader.On("Load", pluginDir).Once().Return(
-			map[string]symbolFinder{
+			map[string]pluginloader.SymbolFinder{
 				keyOne: pluginOne,
 				keyTwo: pluginTwo,
 			},
@@ -79,7 +80,7 @@ func Test_Load(t *testing.T) {
 		pluginOne := &mockSymbolFinder{}
 
 		pluginLoader.On("Load", pluginDir).Once().Return(
-			map[string]symbolFinder{
+			map[string]pluginloader.SymbolFinder{
 				keyOne: pluginOne,
 			},
 			nil,
@@ -105,7 +106,7 @@ func Test_Load(t *testing.T) {
 		pluginOne := &mockSymbolFinder{}
 
 		pluginLoader.On("Load", pluginDir).Once().Return(
-			map[string]symbolFinder{
+			map[string]pluginloader.SymbolFinder{
 				keyOne: pluginOne,
 			},
 			nil,
@@ -141,11 +142,11 @@ type mockPluginLoader struct {
 	mock.Mock
 }
 
-func (m *mockPluginLoader) Load(pluginDir string) (map[string]symbolFinder, error) {
+func (m *mockPluginLoader) Load(pluginDir string) (map[string]pluginloader.SymbolFinder, error) {
 	args := m.Called(pluginDir)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 
-	return args.Get(0).(map[string]symbolFinder), args.Error(1)
+	return args.Get(0).(map[string]pluginloader.SymbolFinder), args.Error(1)
 }
