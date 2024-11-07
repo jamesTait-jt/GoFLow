@@ -15,11 +15,11 @@ type redisClient interface {
 	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd
 }
 
-type serialiser[T task.TaskOrResult] interface {
+type Serialiser[T task.TaskOrResult] interface {
 	Serialise(toSerialise T) ([]byte, error)
 }
 
-type deserialiser[T task.TaskOrResult] interface {
+type Deserialiser[T task.TaskOrResult] interface {
 	Deserialise(toDeserialise []byte) (T, error)
 }
 
@@ -28,16 +28,16 @@ type RedisBroker[T task.TaskOrResult] struct {
 	redisQueueKey string
 	outChan       chan T
 	started       sync.Once
-	serialiser    serialiser[T]
-	deserialiser  deserialiser[T]
+	serialiser    Serialiser[T]
+	deserialiser  Deserialiser[T]
 	wg            *sync.WaitGroup
 }
 
 func NewRedisBroker[T task.TaskOrResult](
 	client redisClient,
 	key string,
-	serialiser serialiser[T],
-	deserialiser deserialiser[T],
+	serialiser Serialiser[T],
+	deserialiser Deserialiser[T],
 ) *RedisBroker[T] {
 	return &RedisBroker[T]{
 		client:        client,

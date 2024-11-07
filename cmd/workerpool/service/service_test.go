@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestWorkerpoolService_Start(t *testing.T) {
+func Test_WorkerpoolService_Start(t *testing.T) {
 	ctx := context.Background()
 
 	// Arrange
