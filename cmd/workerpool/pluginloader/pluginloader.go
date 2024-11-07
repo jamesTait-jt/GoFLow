@@ -2,6 +2,7 @@ package pluginloader
 
 import (
 	"fmt"
+	"path/filepath"
 	"plugin"
 	"strings"
 
@@ -32,6 +33,11 @@ func (l *Loader) Load(pluginDir string) (map[string]SymbolFinder, error) {
 	plugins := make(map[string]SymbolFinder, len(files))
 
 	for i := 0; i < len(files); i++ {
+		// Only process files with ".so" extension
+		if filepath.Ext(files[i].Name()) != ".so" {
+			continue
+		}
+
 		plg, err := l.openPlugin(fmt.Sprintf("%s/%s", pluginDir, files[i].Name()))
 		if err != nil {
 			return nil, err
