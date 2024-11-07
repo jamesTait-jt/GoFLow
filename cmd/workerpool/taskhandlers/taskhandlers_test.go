@@ -31,13 +31,16 @@ func Test_Load(t *testing.T) {
 		)
 
 		resultOne := task.Result{TaskID: "1"}
-		var handlerOne task.Handler = func(payload any) task.Result { return resultOne }
-		symbolOne := func() task.Handler { return handlerOne }
-		pluginOne.On("Lookup", "NewHandler").Once().Return(symbolOne, nil)
-
 		resultTwo := task.Result{TaskID: "2"}
-		var handlerTwo task.Handler = func(payload any) task.Result { return resultTwo }
+
+		var handlerOne task.Handler = func(_ any) task.Result { return resultOne }
+
+		var handlerTwo task.Handler = func(_ any) task.Result { return resultTwo }
+
+		symbolOne := func() task.Handler { return handlerOne }
 		symbolTwo := func() task.Handler { return handlerTwo }
+
+		pluginOne.On("Lookup", "NewHandler").Once().Return(symbolOne, nil)
 		pluginTwo.On("Lookup", "NewHandler").Once().Return(symbolTwo, nil)
 
 		// Act

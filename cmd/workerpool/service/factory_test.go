@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_NewFactory(t *testing.T) {
-
-}
-
 func Test_WorkerpoolFactory_NewRedisWorkerpoolService(t *testing.T) {
 	t.Run("Initialises a workerpool service with redis backed brokers", func(t *testing.T) {
 		// Arrange
