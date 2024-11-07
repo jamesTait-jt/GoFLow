@@ -2,14 +2,22 @@ package taskhandlers
 
 import (
 	"fmt"
+	"plugin"
 
-	"github.com/jamesTait-jt/goflow/cmd/workerpool/plugin"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 )
 
-func Load(pluginDir string) (*store.InMemoryKVStore[string, task.Handler], error) {
-	plugins, err := plugin.Load(pluginDir)
+type symbolFinder interface {
+	Lookup(symName string) (plugin.Symbol, error)
+}
+
+type pluginLoader interface {
+	Load(pluginDir string) (map[string]symbolFinder, error)
+}
+
+func Load(pluginLoader pluginLoader, pluginDir string) (*store.InMemoryKVStore[string, task.Handler], error) {
+	plugins, err := pluginLoader.Load(pluginDir)
 	if err != nil {
 		return nil, err
 	}
