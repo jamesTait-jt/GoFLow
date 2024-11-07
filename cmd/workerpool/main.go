@@ -37,10 +37,6 @@ func main() {
 			Addr: conf.BrokerAddr,
 		})
 		workerpoolService = serviceFactory.CreateRedisWorkerpoolService(client)
-
-	// TODO: Not implemented
-	case "kafka":
-		workerpoolService = serviceFactory.CreateKafkaWorkerpoolService()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

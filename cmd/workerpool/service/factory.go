@@ -34,7 +34,3 @@ func (f *Factory) CreateRedisWorkerpoolService(client *redis.Client) *Workerpool
 
 	return NewWorkerpoolService(f.pool, taskQueue, resultQueue, f.taskHandlers)
 }
-
-func (f *Factory) CreateKafkaWorkerpoolService() *WorkerpoolService {
-	return nil
-}
