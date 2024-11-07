@@ -2,7 +2,6 @@ package pluginloader
 
 import (
 	"fmt"
-	"io/fs"
 	"plugin"
 	"strings"
 
@@ -12,8 +11,6 @@ import (
 type SymbolFinder interface {
 	Lookup(symName string) (plugin.Symbol, error)
 }
-
-type dirReader func(string) ([]fs.DirEntry, error)
 
 type pluginOpener func(path string) (*plugin.Plugin, error)
 

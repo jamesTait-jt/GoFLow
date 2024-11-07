@@ -17,8 +17,8 @@ func Test_Loader_Load(t *testing.T) {
 		dirName := "plugins"
 		filepathOne := "plugin1.so"
 		filepathTwo := "plugin2.so"
-		fs.Create(dirName + "/" + filepathOne)
-		fs.Create(dirName + "/" + filepathTwo)
+		_, _ = fs.Create(dirName + "/" + filepathOne)
+		_, _ = fs.Create(dirName + "/" + filepathTwo)
 
 		pluginOne := new(plugin.Plugin)
 		pluginTwo := new(plugin.Plugin)
@@ -67,10 +67,11 @@ func Test_Loader_Load(t *testing.T) {
 
 		dirName := "plugins"
 		filepathOne := "plugin1.so"
-		fs.Create(dirName + "/" + filepathOne)
+		_, _ = fs.Create(dirName + "/" + filepathOne)
 
 		openPluginErr := errors.New("couldnt open plugin")
-		var openPlugin pluginOpener = func(path string) (*plugin.Plugin, error) {
+
+		var openPlugin pluginOpener = func(_ string) (*plugin.Plugin, error) {
 			return nil, openPluginErr
 		}
 
