@@ -45,7 +45,7 @@ func Test_Pool_Start(t *testing.T) {
 		submittedTask := task.Task{Type: taskType}
 
 		resultToReturn := task.Result{
-			Error:   nil,
+			ErrMsg:  "",
 			Payload: "PayloadData",
 		}
 
@@ -67,7 +67,7 @@ func Test_Pool_Start(t *testing.T) {
 		assert.True(t, handlerCalled)
 		assert.Equal(t, submittedTask.ID, resultToReturn.TaskID)
 		assert.Equal(t, resultToReturn.Payload, receivedResult.Payload)
-		assert.Nil(t, receivedResult.Error)
+		assert.Equal(t, "", receivedResult.ErrMsg)
 
 		cancel()
 		wg.Wait()
@@ -89,7 +89,7 @@ func Test_Pool_Start(t *testing.T) {
 		submittedTask := task.Task{Type: taskType}
 
 		resultToReturn := task.Result{
-			Error:   errors.New("error"),
+			ErrMsg:  errors.New("error").Error(),
 			Payload: nil,
 		}
 
@@ -109,7 +109,7 @@ func Test_Pool_Start(t *testing.T) {
 		// Assert
 		assert.True(t, handlerCalled)
 		assert.Equal(t, submittedTask.ID, resultToReturn.TaskID)
-		assert.EqualError(t, resultToReturn.Error, receivedResult.Error.Error())
+		assert.Equal(t, resultToReturn.ErrMsg, receivedResult.ErrMsg)
 		assert.Nil(t, receivedResult.Payload)
 
 		cancel()
@@ -131,7 +131,7 @@ func Test_Pool_Start(t *testing.T) {
 		submittedTask := task.Task{Type: taskType}
 
 		resultToReturn := task.Result{
-			Error:   nil,
+			ErrMsg:  "",
 			Payload: "PayloadData",
 		}
 

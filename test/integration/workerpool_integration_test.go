@@ -4,6 +4,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -69,6 +70,11 @@ func TestWorkerpool_Integration(t *testing.T) {
 		serialisedRepeat, err := taskSerialiser.Serialise(repeatTask)
 		require.NoError(t, err)
 
+		errorMe := true
+		errorTask := task.New("errorer", errorMe)
+		serialisedError, err := taskSerialiser.Serialise(errorTask)
+		require.NoError(t, err)
+
 		// Act
 		_, err = client.LPush(ctx, "tasks", serialisedDouble).Result()
 		require.NoError(t, err)
@@ -88,12 +94,25 @@ func TestWorkerpool_Integration(t *testing.T) {
 		repeatResult, err := resultSerialiser.Deserialise([]byte(redisResult[1]))
 		require.NoError(t, err)
 
+		_, err = client.LPush(ctx, "tasks", serialisedError).Result()
+		require.NoError(t, err)
+
+		redisResult, err = client.BRPop(ctx, 5*time.Second, "results").Result()
+		require.NoError(t, err)
+
+		errorResult, err := resultSerialiser.Deserialise([]byte(redisResult[1]))
+		require.NoError(t, err)
+
 		// Assert
 		assert.Equal(t, 2*doubleMe, doubleResult.Payload)
 		assert.Equal(t, doubleTask.ID, doubleResult.TaskID)
 
 		assert.Equal(t, repeatMe, repeatResult.Payload)
 		assert.Equal(t, repeatTask.ID, repeatResult.TaskID)
+
+		expectedError := fmt.Errorf("error for payload: %v", errorMe)
+		assert.Equal(t, expectedError.Error(), errorResult.ErrMsg)
+		assert.Equal(t, errorTask.ID, errorResult.TaskID)
 	})
 }
 

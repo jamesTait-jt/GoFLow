@@ -8,7 +8,7 @@ import (
 
 func handle(payload any) task.Result {
 	err := fmt.Errorf("error for payload: %v", payload)
-	return task.Result{Error: err}
+	return task.Result{ErrMsg: err.Error()}
 }
 
 func NewHandler() task.Handler {

@@ -19,7 +19,7 @@ type Task struct {
 type Result struct {
 	TaskID  string
 	Payload any
-	Error   error
+	ErrMsg  string
 }
 
 func New(taskType string, payload any) Task {

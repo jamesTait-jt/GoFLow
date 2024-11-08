@@ -75,10 +75,10 @@ func worker(
 			result := handler(t.Payload)
 			result.TaskID = t.ID
 
-			if result.Error != nil {
+			if result.ErrMsg != "" {
 				logrus.WithFields(logrus.Fields{
 					"task_id": t.ID,
-					"error":   result.Error,
+					"error":   result.ErrMsg,
 				}).Error("Failed to process task")
 			}
 
