@@ -24,8 +24,5 @@ go.work.sum
 # env file
 .env
 
-# handler directory used for testing
-handlers
-
 # Config for goflow CLI
 # .goflow.yaml
