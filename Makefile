@@ -19,5 +19,14 @@ build: build-goflow build-workerpool build-pluginbuilder
 clean:
 	go clean -modcache
 
-test: 
-	go test -race -coverprofile=coverage.out -covermode=atomic -shuffle=on ./...
+test-unit: 
+	go test -tags=unit -race -coverprofile=coverage.out -covermode=atomic -shuffle=on ./...
+
+INTEGRATION_TEST_PLUGIN_DIR = test/integration/testdata/handlers
+
+test-integration: clean
+	go mod tidy
+	for gofile in $(INTEGRATION_TEST_PLUGIN_DIR)/*.go; do \
+		go build -buildmode=plugin -o "$${gofile%.go}.so" "$${gofile}"; \
+	done
+	go test -tags=integration -timeout=1m -shuffle=on ./test/integration/...

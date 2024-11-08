@@ -1,3 +1,3 @@
 //go:build unit
 
-package main
+package config

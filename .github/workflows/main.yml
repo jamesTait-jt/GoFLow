@@ -72,19 +72,28 @@ jobs:
       - name: Refresh Report Card
         uses: creekorful/goreportcard-action@v1.0
 
-  test:
+  test-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
 
       - name: Test
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: make test-unit
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  test-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+
+      - name: Test
+        run: make test-integration
 
   test-backwards:
     runs-on: ubuntu-latest

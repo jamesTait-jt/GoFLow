@@ -16,26 +16,25 @@ import (
 	"github.com/spf13/afero"
 )
 
-type Runner struct {
-	conf *config.Config
+type Runtime struct {
+	Conf *config.Config
 }
 
-func New() *Runner {
-	return &Runner{
-		conf: config.LoadConfigFromFlags(),
+func New() *Runtime {
+	return &Runtime{
+		Conf: config.LoadConfigFromFlags(),
 	}
 }
 
-func (r *Runner) Run() {
-	pool := workerpool.New(r.conf.NumWorkers)
+func (r *Runtime) Run() error {
+	fmt.Printf("workerpool started with config: %v\n", r.Conf)
+	pool := workerpool.New(r.Conf.NumWorkers)
 
 	pluginLoader := pluginloader.New(afero.NewOsFs(), plugin.Open)
 
-	taskHandlers, err := taskhandlers.Load(pluginLoader, r.conf.HandlersPath)
+	taskHandlers, err := taskhandlers.Load(pluginLoader, r.Conf.HandlersPath)
 	if err != nil {
-		fmt.Println(err)
-
-		return
+		return err
 	}
 
 	resultSerialiser := serialise.NewGobSerialiser[task.Result]()
@@ -44,11 +43,20 @@ func (r *Runner) Run() {
 
 	var workerpoolService *service.WorkerpoolService
 
-	switch r.conf.BrokerType {
+	switch r.Conf.BrokerType {
 	case "redis":
 		client := redis.NewClient(&redis.Options{
-			Addr: r.conf.BrokerAddr,
+			Addr: r.Conf.BrokerAddr,
 		})
+		ctx := context.Background()
+		pong, err := client.Ping(ctx).Result()
+
+		if err != nil {
+			return fmt.Errorf("could not connect to redis: %v", err)
+		}
+
+		fmt.Printf("redis connection successful: %s\n", pong)
+
 		workerpoolService = serviceFactory.CreateRedisWorkerpoolService(client)
 	}
 
@@ -56,4 +64,6 @@ func (r *Runner) Run() {
 	defer cancel()
 
 	workerpoolService.Start(ctx)
+
+	return nil
 }
