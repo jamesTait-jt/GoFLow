@@ -26,7 +26,8 @@ INTEGRATION_TEST_PLUGIN_DIR = test/integration/testdata/handlers
 
 test-integration: clean
 	go mod tidy
-	for gofile in $(INTEGRATION_TEST_PLUGIN_DIR)/*.go; do \
+	for gofile in $(shell echo $(INTEGRATION_TEST_PLUGIN_DIR)/*.go); do \
 		go build -buildmode=plugin -o "$${gofile%.go}.so" "$${gofile}"; \
 	done
 	go test -tags=integration -timeout=1m -shuffle=on ./test/integration/...
+

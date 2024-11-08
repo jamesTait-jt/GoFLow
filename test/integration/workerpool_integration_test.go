@@ -95,7 +95,6 @@ func TestWorkerpool_Integration(t *testing.T) {
 		assert.Equal(t, repeatMe, repeatResult.Payload)
 		assert.Equal(t, repeatTask.ID, repeatResult.TaskID)
 	})
-
 }
 
 func startRedisContainer(ctx context.Context) (testcontainers.Container, error) {
