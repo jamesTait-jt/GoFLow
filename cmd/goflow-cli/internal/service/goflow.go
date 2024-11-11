@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
+	pb "github.com/jamesTait-jt/goflow/grpc/proto"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 )
 

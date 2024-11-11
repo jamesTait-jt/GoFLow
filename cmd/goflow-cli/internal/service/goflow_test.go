@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
+	pb "github.com/jamesTait-jt/goflow/grpc/proto"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

@@ -18,6 +18,7 @@ COPY goflow.go options.go ./
 COPY workerpool ./workerpool
 COPY broker ./broker
 COPY task ./task
+COPY grpc ./grpc
 COPY pkg ./pkg
 
 RUN go build -o workerpool ./cmd/workerpool

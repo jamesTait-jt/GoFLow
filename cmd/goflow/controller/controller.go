@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	pb "github.com/jamesTait-jt/goflow/cmd/goflow/goflow"
+	pb "github.com/jamesTait-jt/goflow/grpc/proto"
 	"github.com/jamesTait-jt/goflow/task"
 
 	"github.com/jamesTait-jt/goflow/pkg/log"
