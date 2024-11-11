@@ -21,6 +21,9 @@ jobs:
       - uses: actions/setup-go@v4
       - name: Lint
         uses: golangci/golangci-lint-action@v6.1.1
+        with:
+          args: --timeout 3m0s
+
       #   with:
       #     args: --out-format sarif:golangci-lint.sarif,colored-line-number:stdout
       # - uses: actions/upload-artifact@master
