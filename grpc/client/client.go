@@ -1,4 +1,4 @@
-package service
+package client
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
 	"github.com/jamesTait-jt/goflow/pkg/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type GoFlowService struct {
@@ -15,12 +17,17 @@ type GoFlowService struct {
 	logger         log.Logger
 }
 
-func NewGoFlowService(client pb.GoFlowClient, timeout time.Duration, logger log.Logger) *GoFlowService {
+func NewGoFlowService(connString string, timeout time.Duration, logger log.Logger) (*GoFlowService, error) {
+	conn, err := grpc.NewClient(connString, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
 	return &GoFlowService{
-		client:         client,
+		client:         pb.NewGoFlowClient(conn),
 		requestTimeout: timeout,
 		logger:         logger,
-	}
+	}, nil
 }
 
 func (g *GoFlowService) Push(taskType, payload string) (string, error) {

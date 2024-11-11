@@ -8,8 +8,7 @@ import (
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
-	"github.com/jamesTait-jt/goflow/grpc/server/controller"
-	"github.com/jamesTait-jt/goflow/grpc/server/service"
+	"github.com/jamesTait-jt/goflow/grpc/server"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
@@ -56,8 +55,8 @@ func (r *Runtime) Run() error {
 
 	gf.Start()
 
-	gfService := service.New(gf)
-	controller := controller.NewGoFlowServiceController(gfService, logger)
+	gfService := server.NewGoFlowService(gf)
+	controller := server.NewGoFlowServiceController(gfService, logger)
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterGoFlowServer(grpcServer, controller)

@@ -1,6 +1,6 @@
 //go:build unit
 
-package service
+package client
 
 import (
 	"context"
@@ -20,7 +20,7 @@ func Test_GoFlowService_Push(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
 		mockLogger := new(log.TestifyMock)
-		service := NewGoFlowService(mockClient, time.Second, mockLogger)
+		service := &GoFlowService{mockClient, time.Second, mockLogger}
 
 		taskType := "example-task"
 		payload := "example-payload"
@@ -43,7 +43,7 @@ func Test_GoFlowService_Push(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
 		mockLogger := new(log.TestifyMock)
-		service := NewGoFlowService(mockClient, time.Second, mockLogger)
+		service := &GoFlowService{mockClient, time.Second, mockLogger}
 
 		taskType := "example-task"
 		payload := "example-payload"
@@ -68,7 +68,7 @@ func Test_GoFlowService_Get(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
 		mockLogger := new(log.TestifyMock)
-		service := NewGoFlowService(mockClient, time.Second, mockLogger)
+		service := &GoFlowService{mockClient, time.Second, mockLogger}
 
 		taskID := "12345"
 		expectedResult := "task result"
@@ -90,7 +90,7 @@ func Test_GoFlowService_Get(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
 		mockLogger := new(log.TestifyMock)
-		service := NewGoFlowService(mockClient, time.Second, mockLogger)
+		service := &GoFlowService{mockClient, time.Second, mockLogger}
 
 		taskID := "12345"
 		expectedError := errors.New("result not found")
@@ -112,7 +112,7 @@ func Test_GoFlowService_Get(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
 		mockLogger := new(log.TestifyMock)
-		service := NewGoFlowService(mockClient, time.Millisecond, mockLogger)
+		service := &GoFlowService{mockClient, time.Second, mockLogger}
 
 		taskID := "12345"
 		expectedError := context.DeadlineExceeded

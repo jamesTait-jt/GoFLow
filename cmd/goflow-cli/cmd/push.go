@@ -7,12 +7,9 @@ import (
 
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
 	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/grpcserver"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/service"
-	pb "github.com/jamesTait-jt/goflow/grpc/proto"
+	"github.com/jamesTait-jt/goflow/grpc/client"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var pushCmd = &cobra.Command{
@@ -37,17 +34,13 @@ var pushCmd = &cobra.Command{
 			return err
 		}
 
+		logger := log.NewConsoleLogger()
+
 		serverAddr := fmt.Sprintf("%s:%d", conf.GoFlowServer.Address, grpcserver.GRPCPort)
-		conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		goFlowService, err := client.NewGoFlowService(serverAddr, time.Minute, logger)
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
-
-		goFlowClient := pb.NewGoFlowClient(conn)
-		logger := log.NewConsoleLogger()
-
-		goFlowService := service.NewGoFlowService(goFlowClient, time.Minute, logger)
 
 		taskID, err := goFlowService.Push(args[0], args[1])
 		if err != nil {

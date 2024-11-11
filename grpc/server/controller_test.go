@@ -1,6 +1,6 @@
 //go:build unit
 
-package controller
+package server
 
 import (
 	"context"

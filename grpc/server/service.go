@@ -1,4 +1,4 @@
-package service
+package server
 
 import (
 	"github.com/jamesTait-jt/goflow"
@@ -9,7 +9,7 @@ type GoFlowService struct {
 	gf *goflow.GoFlow
 }
 
-func New(gf *goflow.GoFlow) *GoFlowService {
+func NewGoFlowService(gf *goflow.GoFlow) *GoFlowService {
 	return &GoFlowService{gf: gf}
 }
 
