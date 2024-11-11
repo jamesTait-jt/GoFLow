@@ -5,9 +5,13 @@ package broker
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/jamesTait-jt/goflow/pkg/channel"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -17,13 +21,14 @@ import (
 func Test_NewRedisBroker(t *testing.T) {
 	t.Run("Creates a redis broker with the variables initialised", func(t *testing.T) {
 		// Arrange
-		client := &mockRedisClient{}
+		client := new(mockRedisClient)
 		key := "queue"
-		serialiser := &mockSerialiser[task.Task]{}
-		deserialiser := &mockDeserialiser[task.Task]{}
+		serialiser := new(mockSerialiser[task.Task])
+		deserialiser := new(mockDeserialiser[task.Task])
+		logger := new(log.TestifyMock)
 
 		// Act
-		broker := NewRedisBroker[task.Task](client, key, serialiser, deserialiser)
+		broker := NewRedisBroker(client, key, serialiser, deserialiser, logger)
 
 		// Assert
 		assert.Equal(t, client, broker.client)
@@ -32,6 +37,8 @@ func Test_NewRedisBroker(t *testing.T) {
 		assert.Equal(t, deserialiser, broker.deserialiser)
 		assert.NotNil(t, broker.outChan)
 		assert.NotNil(t, &broker.started)
+		assert.NotNil(t, broker.wg)
+		assert.Equal(t, time.Second, broker.pollDelay)
 	})
 }
 
@@ -132,6 +139,191 @@ func Test_RedisBroker_Submit(t *testing.T) {
 		// Assert
 		assert.EqualError(t, err, lpushErr.Error())
 		serialiser.AssertExpectations(t)
+	})
+}
+
+func Test_RedisBroker_Dequeue(t *testing.T) {
+	t.Run("Polls redis and returns a channel for listening", func(t *testing.T) {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+
+		mockClient := new(mockRedisClient)
+		queueKey := "queue"
+		deserialiser := new(mockDeserialiser[task.Task])
+		outChan := make(chan task.Task)
+		wg := &sync.WaitGroup{}
+		pollDelay := time.Millisecond
+
+		br := &RedisBroker[task.Task]{
+			client:        mockClient,
+			redisQueueKey: queueKey,
+			deserialiser:  deserialiser,
+			outChan:       outChan,
+			wg:            wg,
+			pollDelay:     pollDelay,
+		}
+
+		returnedFromRedis := &redis.StringSliceCmd{}
+		returnedFromRedis.SetVal([]string{"", "returned val"})
+		mockClient.On("BRPop", ctx, pollDelay, []string{queueKey}).Once().Return(returnedFromRedis)
+
+		deserialisedVal := task.Task{}
+		deserialiser.On("Deserialise", []byte(returnedFromRedis.Val()[1])).Once().Run(func(args mock.Arguments) {
+			// Cancel so that there will only be one iteration of the polling loop
+			cancel()
+		}).Return(deserialisedVal, nil)
+
+		// Act
+		c := br.Dequeue(ctx)
+
+		// Assert
+		assert.Equal(t, c, channel.NewReadOnly(outChan))
+		assert.Equal(t, deserialisedVal, <-c)
+
+		br.wg.Wait()
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("Handles Redis timeout (redis.Nil) and continues polling", func(t *testing.T) {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+
+		mockClient := new(mockRedisClient)
+		queueKey := "queue"
+		deserialiser := new(mockDeserialiser[task.Task])
+		outChan := make(chan task.Task)
+		wg := &sync.WaitGroup{}
+		pollDelay := time.Millisecond
+
+		br := &RedisBroker[task.Task]{
+			client:        mockClient,
+			redisQueueKey: queueKey,
+			deserialiser:  deserialiser,
+			outChan:       outChan,
+			wg:            wg,
+			pollDelay:     pollDelay,
+		}
+
+		returnedResult := &redis.StringSliceCmd{}
+		returnedResult.SetErr(redis.Nil)
+		mockClient.On("BRPop", ctx, pollDelay, []string{queueKey}).Once().Run(func(args mock.Arguments) {
+			// Cancel so that there will only be one iteration of the polling loop
+			cancel()
+		}).Return(returnedResult)
+
+		// Act
+		br.Dequeue(ctx)
+
+		// Assert
+		br.wg.Wait()
+
+		select {
+		case <-outChan:
+			t.Error("Expected no value in outChan")
+		default:
+			// Test passes, as no task should be available
+		}
+
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("Logs Redis error and continues polling", func(t *testing.T) {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+
+		mockClient := new(mockRedisClient)
+		queueKey := "queue"
+		deserialiser := new(mockDeserialiser[task.Task])
+		outChan := make(chan task.Task)
+		wg := &sync.WaitGroup{}
+		pollDelay := time.Millisecond
+		logger := new(log.TestifyMock)
+
+		br := &RedisBroker[task.Task]{
+			client:        mockClient,
+			redisQueueKey: queueKey,
+			deserialiser:  deserialiser,
+			outChan:       outChan,
+			wg:            wg,
+			pollDelay:     pollDelay,
+			logger:        logger,
+		}
+
+		returnedResult := &redis.StringSliceCmd{}
+		returnedResult.SetErr(redis.ErrClosed)
+		mockClient.On("BRPop", ctx, pollDelay, []string{queueKey}).Once().Run(func(args mock.Arguments) {
+			// Cancel so that there will only be one iteration of the polling loop
+			cancel()
+		}).Return(returnedResult)
+
+		logger.On("Warn", "BRPop error: redis: client is closed").Once()
+
+		// Act
+		br.Dequeue(ctx)
+
+		// Assert
+		br.wg.Wait()
+
+		select {
+		case <-outChan:
+			t.Error("Expected no value in outChan")
+		default:
+			// Test passes, as no task should be available
+		}
+
+		mockClient.AssertExpectations(t)
+		logger.AssertExpectations(t)
+	})
+
+	t.Run("Handles deserialisation failure", func(t *testing.T) {
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+
+		mockClient := new(mockRedisClient)
+		queueKey := "queue"
+		deserialiser := new(mockDeserialiser[task.Task])
+		outChan := make(chan task.Task)
+		wg := &sync.WaitGroup{}
+		pollDelay := time.Millisecond
+		logger := new(log.TestifyMock)
+
+		br := &RedisBroker[task.Task]{
+			client:        mockClient,
+			redisQueueKey: queueKey,
+			deserialiser:  deserialiser,
+			outChan:       outChan,
+			wg:            wg,
+			pollDelay:     pollDelay,
+			logger:        logger,
+		}
+
+		returnedFromRedis := &redis.StringSliceCmd{}
+		returnedFromRedis.SetVal([]string{"", "faulty data"})
+		mockClient.On("BRPop", ctx, pollDelay, []string{queueKey}).Once().Return(returnedFromRedis)
+
+		deserialiser.On("Deserialise", []byte("faulty data")).Once().Run(func(args mock.Arguments) {
+			// Cancel so that there will only be one iteration of the polling loop
+			cancel()
+		}).Return(task.Task{}, fmt.Errorf("deserialisation error"))
+
+		logger.On("Warn", "Failed to deserialize task: deserialisation error").Once()
+
+		// Act
+		br.Dequeue(ctx)
+
+		// Assert
+		br.wg.Wait()
+
+		select {
+		case <-outChan:
+			t.Error("Expected no value in outChan due to deserialization failure")
+		default:
+			// Test passes, as no task should be available
+		}
+
+		mockClient.AssertExpectations(t)
+		deserialiser.AssertExpectations(t)
+		logger.AssertExpectations(t)
 	})
 }
 

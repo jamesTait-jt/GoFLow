@@ -45,8 +45,8 @@ func (r *Runtime) Run() error {
 
 	logger.Info(fmt.Sprintf("redis connection successful: %s", pong))
 
-	taskSubmitter := broker.NewRedisBroker(redisClient, "tasks", serialise.NewGobSerialiser[task.Task](), nil)
-	resultsGetter := broker.NewRedisBroker(redisClient, "results", nil, serialise.NewGobSerialiser[task.Result]())
+	taskSubmitter := broker.NewRedisBroker(redisClient, "tasks", serialise.NewGobSerialiser[task.Task](), nil, logger)
+	resultsGetter := broker.NewRedisBroker(redisClient, "results", nil, serialise.NewGobSerialiser[task.Result](), logger)
 	resultsStore := store.NewInMemoryKVStore[string, task.Result]()
 
 	gf := goflow.New(

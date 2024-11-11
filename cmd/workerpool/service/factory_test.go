@@ -5,6 +5,7 @@ package service
 import (
 	"testing"
 
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
@@ -19,10 +20,11 @@ func Test_WorkerpoolFactory_NewRedisWorkerpoolService(t *testing.T) {
 		resultSerialiser := serialise.NewGobSerialiser[task.Result]()
 		taskSerialiser := serialise.NewGobSerialiser[task.Task]()
 		taskHandlers := store.NewInMemoryKVStore[string, task.Handler]()
+		logger := log.NewConsoleLogger()
 
 		client := &redis.Client{}
 
-		f := NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers)
+		f := NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers, logger)
 
 		// Act
 		service := f.CreateRedisWorkerpoolService(client)

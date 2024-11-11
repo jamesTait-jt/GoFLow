@@ -6,6 +6,7 @@ import (
 
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
@@ -25,10 +26,11 @@ func main() {
 
 	taskSerialiser := serialise.NewGobSerialiser[task.Task]()
 	resultSerialiser := serialise.NewGobSerialiser[task.Result]()
+	logger := log.NewConsoleLogger()
 
 	gf := goflow.New(
-		broker.NewRedisBroker[task.Task](redisClient, "tasks", taskSerialiser, nil),
-		broker.NewRedisBroker[task.Result](redisClient, "results", nil, resultSerialiser),
+		broker.NewRedisBroker[task.Task](redisClient, "tasks", taskSerialiser, nil, logger),
+		broker.NewRedisBroker[task.Result](redisClient, "results", nil, resultSerialiser, logger),
 		goflow.WithResultsStore(resultsStore),
 	)
 

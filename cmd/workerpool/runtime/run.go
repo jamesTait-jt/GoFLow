@@ -9,6 +9,7 @@ import (
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/pluginloader"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/service"
 	"github.com/jamesTait-jt/goflow/cmd/workerpool/taskhandlers"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/jamesTait-jt/goflow/workerpool"
@@ -37,9 +38,11 @@ func (r *Runtime) Run() error {
 		return err
 	}
 
+	logger := log.NewConsoleLogger()
+
 	resultSerialiser := serialise.NewGobSerialiser[task.Result]()
 	taskSerialiser := serialise.NewGobSerialiser[task.Task]()
-	serviceFactory := service.NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers)
+	serviceFactory := service.NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers, logger)
 
 	var workerpoolService *service.WorkerpoolService
 
