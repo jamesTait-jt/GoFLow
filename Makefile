@@ -26,6 +26,7 @@ INTEGRATION_TEST_PLUGIN_DIR = test/integration/testdata/handlers
 
 test-integration: clean
 	go mod tidy
+	rm -f $(INTEGRATION_TEST_PLUGIN_DIR)/*.so
 	find $(INTEGRATION_TEST_PLUGIN_DIR) -name "*.go" | while read -r gofile; do \
 		go build -buildmode=plugin -o "$${gofile%.go}.so" "$$gofile"; \
 	done
