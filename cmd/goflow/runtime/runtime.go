@@ -7,16 +7,15 @@ import (
 
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
-	"github.com/jamesTait-jt/goflow/cmd/goflow/controller"
-	"github.com/jamesTait-jt/goflow/cmd/goflow/service"
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
+	"github.com/jamesTait-jt/goflow/grpc/server/controller"
+	"github.com/jamesTait-jt/goflow/grpc/server/service"
+	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
-
-	"github.com/jamesTait-jt/goflow/pkg/log"
 )
 
 var (
