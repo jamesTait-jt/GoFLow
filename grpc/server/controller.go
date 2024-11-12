@@ -13,7 +13,7 @@ import (
 
 type goFlowService interface {
 	PushTask(taskType string, payload any) (string, error)
-	GetResult(taskID string) (task.Result, bool)
+	GetResult(taskID string) (task.Result, bool, error)
 }
 
 type GoFlowServiceController struct {
@@ -40,7 +40,11 @@ func (c *GoFlowServiceController) PushTask(_ context.Context, in *pb.PushTaskReq
 func (c *GoFlowServiceController) GetResult(_ context.Context, in *pb.GetResultRequest) (*pb.GetResultReply, error) {
 	c.logger.Info(fmt.Sprintf("Received get result: [%s]", in.GetTaskID()))
 
-	result, ok := c.svc.GetResult(in.GetTaskID())
+	result, ok, err := c.svc.GetResult(in.GetTaskID())
+	if err != nil {
+		return nil, err
+	}
+
 	if !ok {
 		return nil, fmt.Errorf("task not complete or didnt exist")
 	}

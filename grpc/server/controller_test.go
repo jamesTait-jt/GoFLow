@@ -95,8 +95,8 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 		shouldLog := "Received get result: [task-id]"
 		logger.On("Info", shouldLog).Once()
 
-		result := task.Result{ /* populate with relevant fields */ }
-		svc.On("GetResult", req.TaskID).Once().Return(result, true)
+		result := task.Result{}
+		svc.On("GetResult", req.TaskID).Once().Return(result, true, nil)
 
 		parsedResult, _ := json.Marshal(result)
 		expectedReply := &pb.GetResultReply{Result: string(parsedResult)}
@@ -107,6 +107,35 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, expectedReply, resp)
+
+		svc.AssertExpectations(t)
+		logger.AssertExpectations(t)
+	})
+
+	t.Run("Returns an error if GetResult returns an error", func(t *testing.T) {
+		// Arrange
+		svc := new(mockGoFlowService)
+		logger := new(log.TestifyMock)
+
+		controller := NewGoFlowServiceController(svc, logger)
+
+		ctx := context.Background()
+		req := &pb.GetResultRequest{
+			TaskID: "failing-task-id",
+		}
+
+		shouldLog := "Received get result: [failing-task-id]"
+		logger.On("Info", shouldLog).Once()
+
+		getResultErr := errors.New("couldnt get result")
+		svc.On("GetResult", req.TaskID).Once().Return(task.Result{}, false, getResultErr)
+
+		// Act
+		resp, err := controller.GetResult(ctx, req)
+
+		// Assert
+		assert.EqualError(t, err, getResultErr.Error())
+		assert.Nil(t, resp)
 
 		svc.AssertExpectations(t)
 		logger.AssertExpectations(t)
@@ -127,7 +156,7 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 		shouldLog := "Received get result: [nonexistent-task-id]"
 		logger.On("Info", shouldLog).Once()
 
-		svc.On("GetResult", req.TaskID).Once().Return(task.Result{}, false)
+		svc.On("GetResult", req.TaskID).Once().Return(task.Result{}, false, nil)
 
 		// Act
 		resp, err := controller.GetResult(ctx, req)
@@ -158,7 +187,7 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 		result := task.Result{
 			Payload: make(chan bool),
 		}
-		svc.On("GetResult", req.TaskID).Once().Return(result, true)
+		svc.On("GetResult", req.TaskID).Once().Return(result, true, nil)
 
 		// Act
 		resp, err := controller.GetResult(ctx, req)
@@ -182,7 +211,7 @@ func (m *mockGoFlowService) PushTask(taskType string, payload any) (string, erro
 	return args.String(0), args.Error(1)
 }
 
-func (m *mockGoFlowService) GetResult(taskID string) (task.Result, bool) {
+func (m *mockGoFlowService) GetResult(taskID string) (task.Result, bool, error) {
 	args := m.Called(taskID)
-	return args.Get(0).(task.Result), args.Bool(1)
+	return args.Get(0).(task.Result), args.Bool(1), args.Error(2)
 }

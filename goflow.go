@@ -2,6 +2,7 @@ package goflow
 
 import (
 	"context"
+	"errors"
 	"log"
 	"sync"
 
@@ -67,7 +68,13 @@ type GoFlow struct {
 	resultsBroker   Broker[task.Result]
 	results         KVStore[string, task.Result]
 	resultsWriterWG *sync.WaitGroup
+	started         bool
 }
+
+var (
+	ErrAlreadyStarted = errors.New("GoFlow is already started")
+	ErrNotStarted     = errors.New("GoFlow is not started yet")
+)
 
 // New creates and initializes a new GoFlow instance in distributed mode.
 // It sets up the context for cancellation and configures the necessary components.
@@ -135,7 +142,13 @@ func NewLocalMode(
 //
 // Additionally, the method launches a goroutine to persist results from the results
 // broker to the results store.
-func (gf *GoFlow) Start() {
+func (gf *GoFlow) Start() error {
+	if gf.started {
+		return ErrAlreadyStarted
+	}
+
+	gf.started = true
+
 	// Running with local worker pool
 	if gf.workers != nil && gf.taskHandlers != nil {
 		gf.workers.Start(gf.ctx, gf.taskBroker, gf.resultsBroker, gf.taskHandlers)
@@ -143,12 +156,20 @@ func (gf *GoFlow) Start() {
 
 	gf.resultsWriterWG.Add(1)
 	go gf.persistResults(gf.resultsBroker, gf.resultsWriterWG)
+
+	return nil
 }
 
 // Stop gracefully shuts down the GoFlow instance. It cancels the context to signal
 // all ongoing operations to stop. If the worker pool is configured, (i.e. local mode)
 // it waits for all workers to complete their tasks and shut down before returning.
-func (gf *GoFlow) Stop() {
+func (gf *GoFlow) Stop() error {
+	if !gf.started {
+		return ErrNotStarted
+	}
+
+	gf.started = false
+
 	gf.cancel()
 	gf.resultsWriterWG.Wait()
 	gf.resultsBroker.AwaitShutdown()
@@ -157,6 +178,8 @@ func (gf *GoFlow) Stop() {
 	if gf.workers != nil {
 		gf.workers.AwaitShutdown()
 	}
+
+	return nil
 }
 
 // RegisterHandler registers a task handler for the specified task type. It stores
@@ -181,6 +204,10 @@ func (gf *GoFlow) RegisterHandler(taskType string, handler task.Handler) {
 // The task is processed by the worker pool, and the caller can use the returned
 // task ID to retrieve the result later.
 func (gf *GoFlow) Push(taskType string, payload any) (string, error) {
+	if !gf.started {
+		return "", ErrNotStarted
+	}
+
 	t := task.New(taskType, payload)
 
 	err := gf.taskBroker.Submit(gf.ctx, t)
@@ -196,10 +223,14 @@ func (gf *GoFlow) Push(taskType string, payload any) (string, error) {
 //
 // If the task with the given ID has completed, the result will be returned. If the
 // task has not yet completed or does not exist, the boolean will be false.
-func (gf *GoFlow) GetResult(taskID string) (task.Result, bool) {
+func (gf *GoFlow) GetResult(taskID string) (task.Result, bool, error) {
+	if !gf.started {
+		return task.Result{}, false, ErrNotStarted
+	}
+
 	result, ok := gf.results.Get(taskID)
 
-	return result, ok
+	return result, ok, nil
 }
 
 func (gf *GoFlow) persistResults(results task.Dequeuer[task.Result], wg *sync.WaitGroup) {

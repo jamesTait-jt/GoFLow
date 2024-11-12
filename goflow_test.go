@@ -39,6 +39,8 @@ func Test_New(t *testing.T) {
 		assert.Equal(t, resultBroker, gf.resultsBroker)
 
 		assert.IsType(t, &store.InMemoryKVStore[string, task.Result]{}, gf.results)
+
+		assert.False(t, gf.started)
 	})
 
 	t.Run("Initialises goflow with custom options in distributed mode", func(t *testing.T) {
@@ -78,6 +80,8 @@ func Test_NewLocalMode(t *testing.T) {
 		assert.IsType(t, &store.InMemoryKVStore[string, task.Result]{}, gf.results)
 
 		assert.Equal(t, taskHandlers, gf.taskHandlers)
+
+		assert.False(t, gf.started)
 	})
 
 	t.Run("Initialises goflow with custom options in local mode", func(t *testing.T) {
@@ -93,6 +97,19 @@ func Test_NewLocalMode(t *testing.T) {
 }
 
 func Test_GoFlow_Start(t *testing.T) {
+	t.Run("Returns error if GoFlow already started", func(t *testing.T) {
+		// Arrange
+		gf := &GoFlow{
+			started: true,
+		}
+
+		// Act
+		err := gf.Start()
+
+		// Assert
+		assert.EqualError(t, err, ErrAlreadyStarted.Error())
+	})
+
 	t.Run("Does not start the workerpool if workers not initialised", func(_ *testing.T) {
 		// Arrange
 		ctx, cancel := context.WithCancel(context.Background())
@@ -106,16 +123,19 @@ func Test_GoFlow_Start(t *testing.T) {
 			taskHandlers:    taskHandlers,
 			resultsBroker:   broker.NewChannelBroker[task.Result](0),
 			resultsWriterWG: resultsWriterWG,
+			started:         false,
 		}
 
 		// Act
 		cancel()
-		gf.Start()
+		err := gf.Start()
 
 		// Assert - it's not really possible to assert here but there would be a nil
 		// pointer dereference if Start() were called on the nil workers, so we can
 		// assume a pass if there is no panic
 		resultsWriterWG.Wait()
+		assert.Nil(t, err)
+		assert.True(t, gf.started)
 	})
 
 	t.Run("Does not start the workerpool if task handlers not initialised", func(t *testing.T) {
@@ -131,15 +151,18 @@ func Test_GoFlow_Start(t *testing.T) {
 			taskHandlers:    nil,
 			resultsBroker:   broker.NewChannelBroker[task.Result](0),
 			resultsWriterWG: resultsWriterWG,
+			started:         false,
 		}
 
 		// Act
 		cancel()
-		gf.Start()
+		err := gf.Start()
 
 		// Assert
 		resultsWriterWG.Wait()
+		assert.Nil(t, err)
 		workers.AssertNotCalled(t, "Start")
+		assert.True(t, gf.started)
 	})
 
 	t.Run("Starts the workerpool and persists incoming results", func(t *testing.T) {
@@ -162,6 +185,7 @@ func Test_GoFlow_Start(t *testing.T) {
 			workers:         mockWorkers,
 			taskHandlers:    taskHandlers,
 			resultsWriterWG: resultsWriterWG,
+			started:         false,
 		}
 
 		mockWorkers.On("Start", ctx, taskBroker, resultBroker, taskHandlers).Once()
@@ -174,16 +198,18 @@ func Test_GoFlow_Start(t *testing.T) {
 		resultStore.On("Put", expectedResult.TaskID, expectedResult).Once()
 
 		// Act
-		gf.Start()
+		err := gf.Start()
 		returnCh <- expectedResult
 
 		cancel()
 
-		// 	// Assert
+		// Assert
 		resultsWriterWG.Wait()
+		assert.Nil(t, err)
 		mockWorkers.AssertExpectations(t)
 		resultBroker.AssertExpectations(t)
 		resultStore.AssertExpectations(t)
+		assert.True(t, gf.started)
 	})
 }
 
@@ -234,6 +260,7 @@ func Test_GoFlow_Push(t *testing.T) {
 		gf := GoFlow{
 			ctx:        ctx,
 			taskBroker: mockBroker,
+			started:    true,
 		}
 
 		var submittedTask task.Task
@@ -266,6 +293,7 @@ func Test_GoFlow_Push(t *testing.T) {
 		gf := GoFlow{
 			ctx:        ctx,
 			taskBroker: mockBroker,
+			started:    true,
 		}
 
 		submissionError := errors.New("submission error")
@@ -279,6 +307,27 @@ func Test_GoFlow_Push(t *testing.T) {
 
 		mockBroker.AssertExpectations(t)
 	})
+
+	t.Run("Returns ErrNotStarted if GoFlow instance is not started", func(t *testing.T) {
+		// Arrange
+		mockBroker := new(mockBroker[task.Task])
+
+		ctx := context.Background()
+
+		gf := GoFlow{
+			ctx:        ctx,
+			taskBroker: mockBroker,
+			started:    false,
+		}
+
+		// Act
+		_, err := gf.Push("exampleTask", "examplePayload")
+
+		// Assert
+		assert.EqualError(t, err, ErrNotStarted.Error())
+
+		mockBroker.AssertExpectations(t)
+	})
 }
 
 func Test_GoFlow_GetResult(t *testing.T) {
@@ -288,6 +337,7 @@ func Test_GoFlow_GetResult(t *testing.T) {
 
 		gf := GoFlow{
 			results: mockResults,
+			started: true,
 		}
 
 		taskID := "taskID"
@@ -297,18 +347,21 @@ func Test_GoFlow_GetResult(t *testing.T) {
 		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, true)
 
 		// Act
-		result, ok := gf.GetResult(taskID)
+		result, ok, err := gf.GetResult(taskID)
 
 		// Assert
+		assert.Nil(t, err)
 		assert.Equal(t, expectedResult, result)
 		assert.True(t, ok)
 	})
+
 	t.Run("Returns false if given taskID doesn't exist", func(t *testing.T) {
 		// Arrange
 		mockResults := new(mockKVStore[string, task.Result])
 
 		gf := GoFlow{
 			results: mockResults,
+			started: true,
 		}
 
 		taskID := "taskID"
@@ -318,11 +371,33 @@ func Test_GoFlow_GetResult(t *testing.T) {
 		mockResults.On("Get", mock.Anything).Once().Return(expectedResult, false)
 
 		// Act
-		result, ok := gf.GetResult(taskID)
+		result, ok, err := gf.GetResult(taskID)
 
 		// Assert
+		assert.Nil(t, err)
 		assert.Equal(t, expectedResult, result)
 		assert.False(t, ok)
+	})
+
+	t.Run("Returns ErrNotStarted if GoFlow instance isn't started", func(t *testing.T) {
+		// Arrange
+		mockResults := new(mockKVStore[string, task.Result])
+
+		gf := GoFlow{
+			results: mockResults,
+			started: false,
+		}
+
+		taskID := "taskID"
+
+		// Act
+		result, ok, err := gf.GetResult(taskID)
+
+		// Assert
+		assert.EqualError(t, err, ErrNotStarted.Error())
+		assert.False(t, ok)
+		assert.Equal(t, task.Result{}, result)
+		mockResults.AssertExpectations(t)
 	})
 }
 
@@ -349,14 +424,52 @@ func Test_GoFlow_Stop(t *testing.T) {
 			taskBroker:      mockTaskBroker,
 			resultsBroker:   mockResultBroker,
 			resultsWriterWG: &sync.WaitGroup{},
+			started:         true,
 		}
 
 		// Act
-		gf.Stop()
+		err := gf.Stop()
 
 		// Assert
+		assert.Nil(t, err)
 		assert.True(t, wasCancelCalled)
+
 		mockWorkerPool.AssertExpectations(t)
+		mockTaskBroker.AssertExpectations(t)
+		mockResultBroker.AssertExpectations(t)
+	})
+
+	t.Run("Returns ErrNotStarted if GoFlow instance not started", func(t *testing.T) {
+		// Arrange
+		wasCancelCalled := false
+		mockCancel := func() {
+			wasCancelCalled = true
+		}
+
+		mockWorkerPool := &mockWorkerPool{}
+		mockTaskBroker := &mockBroker[task.Task]{}
+		mockResultBroker := &mockBroker[task.Result]{}
+
+		gf := GoFlow{
+			cancel:          mockCancel,
+			workers:         mockWorkerPool,
+			taskBroker:      mockTaskBroker,
+			resultsBroker:   mockResultBroker,
+			resultsWriterWG: &sync.WaitGroup{},
+			started:         false,
+		}
+
+		// Act
+		err := gf.Stop()
+
+		// Assert
+		assert.EqualError(t, err, ErrNotStarted.Error())
+		assert.False(t, wasCancelCalled)
+		assert.False(t, gf.started)
+
+		mockWorkerPool.AssertExpectations(t)
+		mockTaskBroker.AssertExpectations(t)
+		mockResultBroker.AssertExpectations(t)
 	})
 }
 

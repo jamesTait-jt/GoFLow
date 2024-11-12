@@ -45,7 +45,7 @@ func main() {
 
 		go func() {
 			for {
-				result, ok := gf.GetResult(id)
+				result, ok, _ := gf.GetResult(id)
 				if !ok {
 					time.Sleep(time.Second)
 					continue
