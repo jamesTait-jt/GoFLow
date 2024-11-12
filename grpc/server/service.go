@@ -17,6 +17,6 @@ func (gf *GoFlowService) PushTask(taskType string, payload any) (string, error) 
 	return gf.gf.Push(taskType, payload)
 }
 
-func (gf *GoFlowService) GetResult(taskID string) (task.Result, bool) {
+func (gf *GoFlowService) GetResult(taskID string) (task.Result, bool, error) {
 	return gf.gf.GetResult(taskID)
 }

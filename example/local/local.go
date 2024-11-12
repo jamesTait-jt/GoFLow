@@ -57,7 +57,7 @@ func main() {
 	time.Sleep(time.Second * 1)
 
 	for i := 0; i < len(taskIDs); i++ {
-		result, _ := gf.GetResult(taskIDs[i])
+		result, _, _ := gf.GetResult(taskIDs[i])
 		fmt.Println(result)
 	}
 

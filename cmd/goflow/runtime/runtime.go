@@ -53,7 +53,10 @@ func (r *Runtime) Run() error {
 		goflow.WithResultsStore(resultsStore),
 	)
 
-	gf.Start()
+	_ = gf.Start()
+	defer func() {
+		_ = gf.Stop()
+	}()
 
 	gfService := server.NewGoFlowService(gf)
 	controller := server.NewGoFlowServiceController(gfService, logger)
