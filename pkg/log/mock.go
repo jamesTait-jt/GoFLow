@@ -22,6 +22,10 @@ func (m *TestifyMock) Error(msg string) {
 	m.Called(msg)
 }
 
+func (m *TestifyMock) Fatal(msg string) {
+	m.Called(msg)
+}
+
 func (m *TestifyMock) Waiting(msg string) func(doneMsg string, success bool) {
 	m.Called(msg)
 

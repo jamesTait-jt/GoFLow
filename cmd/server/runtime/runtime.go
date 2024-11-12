@@ -3,43 +3,41 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"net"
 
 	"github.com/jamesTait-jt/goflow"
 	"github.com/jamesTait-jt/goflow/broker"
+	"github.com/jamesTait-jt/goflow/cmd/server/config"
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
 	"github.com/jamesTait-jt/goflow/grpc/server"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/pkg/serialise"
+	"github.com/jamesTait-jt/goflow/pkg/shutdown"
 	"github.com/jamesTait-jt/goflow/pkg/store"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 )
 
-var (
-	redisPort  = "6379"
-	serverPort = "50051"
-)
-
-type Runtime struct{}
-
-func New() *Runtime {
-	return &Runtime{}
+type Runtime struct {
+	Conf *config.Config
 }
 
-func (r *Runtime) Run() error {
+func New() *Runtime {
+	return &Runtime{Conf: config.LoadConfigFromFlags()}
+}
+
+func (r *Runtime) Run(ctx context.Context) error {
+	logger := log.NewConsoleLogger()
+
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("goflow-redis-server:%s", redisPort),
+		Addr: r.Conf.BrokerAddr,
 	})
-	ctx := context.Background()
+
 	pong, err := redisClient.Ping(ctx).Result()
 
 	if err != nil {
 		return err
 	}
-
-	logger := log.NewConsoleLogger()
 
 	logger.Info(fmt.Sprintf("redis connection successful: %s", pong))
 
@@ -54,22 +52,19 @@ func (r *Runtime) Run() error {
 	)
 
 	_ = gf.Start()
-	defer func() {
-		_ = gf.Stop()
-	}()
 
 	gfService := server.NewGoFlowService(gf)
 	controller := server.NewGoFlowServiceController(gfService, logger)
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterGoFlowServer(grpcServer, controller)
+	grpcServer := server.New(logger)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", serverPort))
-	if err != nil {
-		return err
-	}
+	go grpcServer.Start(
+		func(server *grpc.Server) {
+			pb.RegisterGoFlowServer(server, controller)
+		},
+	)
 
-	logger.Info(fmt.Sprintf("server listening at %v", lis.Addr()))
+	shutdown.AddShutdownHook(ctx, logger, grpcServer, redisClient, gf)
 
-	return grpcServer.Serve(lis)
+	return nil
 }

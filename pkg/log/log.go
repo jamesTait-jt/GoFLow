@@ -15,6 +15,7 @@ type Logger interface {
 	Success(msg string)
 	Warn(msg string)
 	Error(msg string)
+	Fatal(msg string)
 	Waiting(msg string) func(doneMsg string, success bool)
 }
 
@@ -46,6 +47,11 @@ func (c *ConsoleLogger) Warn(msg string) {
 func (c *ConsoleLogger) Error(msg string) {
 	errMsg := color.New(color.FgRed).Sprintf("[ERROR]: %s", msg)
 	c.logger.Println(errMsg)
+}
+
+func (c *ConsoleLogger) Fatal(msg string) {
+	fatalMsg := color.New(color.FgHiRed).Sprintf("[FATAL]: %s", msg)
+	c.logger.Fatal(fatalMsg)
 }
 
 var spinnerTime = 100 * time.Millisecond

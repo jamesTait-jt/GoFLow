@@ -428,7 +428,7 @@ func Test_GoFlow_Stop(t *testing.T) {
 		}
 
 		// Act
-		err := gf.Stop()
+		err := gf.Close()
 
 		// Assert
 		assert.Nil(t, err)
@@ -460,7 +460,7 @@ func Test_GoFlow_Stop(t *testing.T) {
 		}
 
 		// Act
-		err := gf.Stop()
+		err := gf.Close()
 
 		// Assert
 		assert.EqualError(t, err, ErrNotStarted.Error())

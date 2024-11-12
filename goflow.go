@@ -160,10 +160,10 @@ func (gf *GoFlow) Start() error {
 	return nil
 }
 
-// Stop gracefully shuts down the GoFlow instance. It cancels the context to signal
+// Close gracefully shuts down the GoFlow instance. It cancels the context to signal
 // all ongoing operations to stop. If the worker pool is configured, (i.e. local mode)
 // it waits for all workers to complete their tasks and shut down before returning.
-func (gf *GoFlow) Stop() error {
+func (gf *GoFlow) Close() error {
 	if !gf.started {
 		return ErrNotStarted
 	}
@@ -171,6 +171,7 @@ func (gf *GoFlow) Stop() error {
 	gf.started = false
 
 	gf.cancel()
+
 	gf.resultsWriterWG.Wait()
 	gf.resultsBroker.AwaitShutdown()
 	gf.taskBroker.AwaitShutdown()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/jamesTait-jt/goflow/cmd/server/runtime"
@@ -9,7 +10,8 @@ import (
 func main() {
 	r := runtime.New()
 
-	if err := r.Run(); err != nil {
+	ctx := context.Background()
+	if err := r.Run(ctx); err != nil {
 		log.Fatal(err)
 	}
 }

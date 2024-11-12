@@ -61,5 +61,5 @@ func main() {
 		fmt.Println(result)
 	}
 
-	gf.Stop()
+	gf.Close()
 }
