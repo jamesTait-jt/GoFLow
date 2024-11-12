@@ -5,7 +5,7 @@ package redis
 import (
 	"testing"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

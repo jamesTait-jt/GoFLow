@@ -6,7 +6,7 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY cmd/goflow ./cmd/goflow
+COPY cmd/server ./cmd/server
 COPY goflow.go options.go ./
 COPY workerpool ./workerpool
 COPY broker ./broker
@@ -14,7 +14,7 @@ COPY task ./task
 COPY grpc ./grpc
 COPY pkg ./pkg
 
-RUN go build -o goflow ./cmd/goflow
+RUN go build -o goflow ./cmd/server
 
 FROM alpine:latest
 

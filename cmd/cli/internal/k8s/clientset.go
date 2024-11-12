@@ -1,7 +1,7 @@
 package k8s
 
 import (
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )

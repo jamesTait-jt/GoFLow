@@ -1,7 +1,7 @@
-package redis
+package grpcserver
 
 import (
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	deploymentName                = "goflow-redis-deployment"
-	deploymentContainerName       = "goflow-redis-deployment-container"
-	ServiceName                   = "goflow-redis-server"
-	RedisPort               int32 = 6379
+	deploymentName                = "goflow-grpc-deployment"
+	deploymentContainerName       = "goflow-grpc-deployment-container"
+	serviceName                   = "goflow-grpc-service"
+	GRPCPort                int32 = 50051
 
 	labels = map[string]string{
-		"app": "goflow-redis",
+		"app": "goflow-grpc-server",
 	}
 )
 
@@ -25,7 +25,7 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 		WithLabels(labels).
 		WithSpec(
 			acappsv1.DeploymentSpec().
-				WithReplicas(conf.Redis.Replicas).
+				WithReplicas(conf.GoFlowServer.Replicas).
 				WithSelector(acmetav1.LabelSelector().WithMatchLabels(labels)).
 				WithTemplate(
 					acapiv1.PodTemplateSpec().
@@ -35,11 +35,15 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 								WithContainers(
 									acapiv1.Container().
 										WithName(deploymentContainerName).
-										WithImage(conf.Redis.Image).
+										WithImage(conf.GoFlowServer.Image).
+										WithImagePullPolicy(apiv1.PullNever).
 										WithPorts(
 											acapiv1.ContainerPort().
-												WithProtocol(apiv1.ProtocolTCP).
-												WithContainerPort(RedisPort),
+												WithProtocol(
+													apiv1.ProtocolTCP,
+												).WithContainerPort(
+												GRPCPort,
+											),
 										),
 								),
 						),
@@ -48,16 +52,17 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 }
 
 func Service(conf *config.Config) *acapiv1.ServiceApplyConfiguration {
-	return acapiv1.Service(ServiceName, conf.Kubernetes.Namespace).
+	return acapiv1.Service(serviceName, conf.Kubernetes.Namespace).
 		WithLabels(labels).
 		WithSpec(
 			acapiv1.ServiceSpec().
 				WithSelector(labels).
-				WithType(apiv1.ServiceTypeClusterIP).
+				WithType(apiv1.ServiceTypeLoadBalancer).
+				WithLoadBalancerIP(conf.GoFlowServer.Address).
 				WithPorts(
 					acapiv1.ServicePort().
-						WithPort(RedisPort).
-						WithTargetPort(intstr.FromInt32(RedisPort)),
+						WithPort(GRPCPort).
+						WithTargetPort(intstr.FromInt32(GRPCPort)),
 				),
 		)
 }

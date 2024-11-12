@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow/runtime"
+	"github.com/jamesTait-jt/goflow/cmd/server/runtime"
 )
 
 func main() {

@@ -5,11 +5,11 @@ package k8s
 import (
 	"testing"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/grpcserver"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/redis"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/workerpool"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/grpcserver"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/redis"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/workerpool"
 	"github.com/stretchr/testify/assert"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"

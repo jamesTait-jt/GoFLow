@@ -3,8 +3,8 @@ package k8s
 import (
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 

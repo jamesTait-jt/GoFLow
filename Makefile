@@ -1,20 +1,20 @@
 build-workerpool:
 	go mod tidy
-	docker build -t workerpool -f dockerfiles/Dockerfile.workerpool .
+	docker build -t goflow-workerpool -f dockerfiles/Dockerfile.workerpool .
 
 build-pluginbuilder:
 	go mod tidy
-	docker build -t plugin-builder -f dockerfiles/Dockerfile.pluginbuilder .
+	docker build -t goflow-plugin-builder -f dockerfiles/Dockerfile.pluginbuilder .
 
-build-goflow:
+build-server:
 	go mod tidy
 	protoc --go_out=. --go_opt=paths=source_relative \
     	--go-grpc_out=. --go-grpc_opt=paths=source_relative \
     	grpc/proto/goflow.proto
 
-	docker build -t goflow-server -f dockerfiles/Dockerfile.goflow .
+	docker build -t goflow-server -f dockerfiles/Dockerfile.server .
 
-build: build-goflow build-workerpool build-pluginbuilder
+build: build-server build-workerpool build-pluginbuilder
 
 clean:
 	go clean -modcache

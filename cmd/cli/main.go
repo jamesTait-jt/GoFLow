@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/cmd"
+	"github.com/jamesTait-jt/goflow/cmd/cli/cmd"
 )
 
 func main() {

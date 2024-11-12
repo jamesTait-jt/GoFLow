@@ -3,7 +3,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
 	"github.com/spf13/cobra"
 )
 

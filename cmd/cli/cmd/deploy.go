@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/k8s"
-	"github.com/jamesTait-jt/goflow/cmd/goflow-cli/internal/service"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/service"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"
 )
