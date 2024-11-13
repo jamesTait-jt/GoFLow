@@ -121,6 +121,55 @@ func Test_GoFlowService_Get(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
+	t.Run("Successfully retrieves task error", func(t *testing.T) {
+		// Arrange
+		mockClient := new(mockGoFlowClient)
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
+
+		taskID := "12345"
+		expectedErr := "ERROR: task err"
+
+		mockClient.On("GetResult", mock.Anything, &pb.GetResultRequest{TaskID: taskID}).
+			Once().
+			Return(&pb.GetResultReply{ErrMsg: expectedErr}, nil)
+
+		// Act
+		result, err := service.Get(taskID)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedErr, result)
+		mockClient.AssertExpectations(t)
+	})
+	t.Run("Successfully retrieves task result", func(t *testing.T) {
+		// Arrange
+		mockClient := new(mockGoFlowClient)
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
+
+		taskID := "12345"
+		expectedResult := "task result"
+
+		mockClient.On("GetResult", mock.Anything, &pb.GetResultRequest{TaskID: taskID}).
+			Once().
+			Return(&pb.GetResultReply{Result: expectedResult}, nil)
+
+		// Act
+		result, err := service.Get(taskID)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, expectedResult, result)
+		mockClient.AssertExpectations(t)
+	})
+
 	t.Run("Returns error if get result fails", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
