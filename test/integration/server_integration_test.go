@@ -57,7 +57,11 @@ func Test_Server_Integration(t *testing.T) {
 	logger := log.NewConsoleLogger()
 	serverAddr := fmt.Sprintf(":%d", 50051)
 
-	goFlowService, err := client.NewGoFlowService(serverAddr, time.Minute, logger)
+	goFlowService, err := client.NewGoFlowClient(
+		serverAddr,
+		client.WithRequestTimeout(time.Minute),
+		client.WithLogger(logger),
+	)
 	require.NoError(t, err)
 
 	t.Run("Handles Push requests and forwards them to tasks queue", func(t *testing.T) {

@@ -13,7 +13,7 @@ type GoFlowGRPCServer struct {
 }
 
 // TODO: Expand this to provide access to set gRPC options
-func New(opt ...GoFlowServerOption) *GoFlowGRPCServer {
+func New(opt ...GoFlowGRPCServerOption) *GoFlowGRPCServer {
 	opts := defaultServerOptions
 
 	for _, o := range opt {

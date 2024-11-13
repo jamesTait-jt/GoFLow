@@ -9,7 +9,6 @@ import (
 	"time"
 
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -19,8 +18,11 @@ func Test_GoFlowService_Push(t *testing.T) {
 	t.Run("Successfully pushes task", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
-		mockLogger := new(log.TestifyMock)
-		service := &GoFlowService{mockClient, time.Second, mockLogger}
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Second,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
 
 		taskType := "example-task"
 		payload := "example-payload"
@@ -42,8 +44,11 @@ func Test_GoFlowService_Push(t *testing.T) {
 	t.Run("Returns error if push task fails", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
-		mockLogger := new(log.TestifyMock)
-		service := &GoFlowService{mockClient, time.Second, mockLogger}
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Second,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
 
 		taskType := "example-task"
 		payload := "example-payload"
@@ -61,14 +66,44 @@ func Test_GoFlowService_Push(t *testing.T) {
 		assert.EqualError(t, err, "failed to push task: failed to push task")
 		mockClient.AssertExpectations(t)
 	})
+
+	t.Run("Returns error on timeout", func(t *testing.T) {
+		// Arrange
+		mockClient := new(mockGoFlowClient)
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
+
+		taskType := "example-task"
+		payload := "example-payload"
+		expectedError := errors.New("timed out")
+
+		mockClient.On("PushTask", mock.Anything, &pb.PushTaskRequest{TaskType: taskType, Payload: payload}).
+			Once().
+			After(opts.requestTimeout*10).
+			Return(nil, expectedError)
+
+		// Act
+		taskID, err := service.Push(taskType, payload)
+
+		// Assert
+		assert.Empty(t, taskID)
+		assert.EqualError(t, err, "failed to push task: timed out")
+		mockClient.AssertExpectations(t)
+	})
 }
 
 func Test_GoFlowService_Get(t *testing.T) {
 	t.Run("Successfully retrieves task result", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
-		mockLogger := new(log.TestifyMock)
-		service := &GoFlowService{mockClient, time.Second, mockLogger}
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
 
 		taskID := "12345"
 		expectedResult := "task result"
@@ -89,8 +124,11 @@ func Test_GoFlowService_Get(t *testing.T) {
 	t.Run("Returns error if get result fails", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
-		mockLogger := new(log.TestifyMock)
-		service := &GoFlowService{mockClient, time.Second, mockLogger}
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
 
 		taskID := "12345"
 		expectedError := errors.New("result not found")
@@ -111,15 +149,18 @@ func Test_GoFlowService_Get(t *testing.T) {
 	t.Run("Returns error on timeout", func(t *testing.T) {
 		// Arrange
 		mockClient := new(mockGoFlowClient)
-		mockLogger := new(log.TestifyMock)
-		service := &GoFlowService{mockClient, time.Second, mockLogger}
+
+		opts := goFlowGRPCClientOptions{
+			requestTimeout: time.Millisecond,
+		}
+		service := &GoFlowGRPCClient{opts, mockClient}
 
 		taskID := "12345"
 		expectedError := context.DeadlineExceeded
 
 		mockClient.On("GetResult", mock.Anything, &pb.GetResultRequest{TaskID: taskID}).
 			Once().
-			After(service.requestTimeout*10).
+			After(opts.requestTimeout*10).
 			Return(nil, expectedError)
 
 		// Act

@@ -37,7 +37,11 @@ var pushCmd = &cobra.Command{
 		logger := log.NewConsoleLogger()
 
 		serverAddr := fmt.Sprintf("%s:%d", conf.GoFlowServer.Address, grpcserver.GRPCPort)
-		goFlowService, err := client.NewGoFlowService(serverAddr, time.Minute, logger)
+		goFlowService, err := client.NewGoFlowClient(
+			serverAddr,
+			client.WithRequestTimeout(time.Minute),
+			client.WithLogger(logger),
+		)
 		if err != nil {
 			return err
 		}

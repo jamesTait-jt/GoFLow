@@ -3,36 +3,37 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	pb "github.com/jamesTait-jt/goflow/grpc/proto"
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// TODO: Add functional options
-type GoFlowService struct {
-	client         pb.GoFlowClient
-	requestTimeout time.Duration
-	logger         log.Logger
+type GoFlowGRPCClient struct {
+	opts   goFlowGRPCClientOptions
+	client pb.GoFlowClient
 }
 
-func NewGoFlowService(connString string, timeout time.Duration, logger log.Logger) (*GoFlowService, error) {
+func NewGoFlowClient(connString string, opt ...GoFlowGRPCClientOption) (*GoFlowGRPCClient, error) {
+	opts := defaultServerOptions
+
+	for _, o := range opt {
+		o.apply(&opts)
+	}
+
 	conn, err := grpc.NewClient(connString, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
 
-	return &GoFlowService{
-		client:         pb.NewGoFlowClient(conn),
-		requestTimeout: timeout,
-		logger:         logger,
+	return &GoFlowGRPCClient{
+		opts:   opts,
+		client: pb.NewGoFlowClient(conn),
 	}, nil
 }
 
-func (g *GoFlowService) Push(taskType, payload string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), g.requestTimeout)
+func (g *GoFlowGRPCClient) Push(taskType, payload string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), g.opts.requestTimeout)
 	defer cancel()
 
 	r, err := g.client.PushTask(ctx, &pb.PushTaskRequest{TaskType: taskType, Payload: payload})
@@ -43,8 +44,8 @@ func (g *GoFlowService) Push(taskType, payload string) (string, error) {
 	return r.GetId(), nil
 }
 
-func (g *GoFlowService) Get(taskID string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), g.requestTimeout)
+func (g *GoFlowGRPCClient) Get(taskID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), g.opts.requestTimeout)
 	defer cancel()
 
 	r, err := g.client.GetResult(ctx, &pb.GetResultRequest{TaskID: taskID})
