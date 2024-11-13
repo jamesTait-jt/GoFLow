@@ -22,6 +22,14 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+// Execute runs the root command for the Goflow CLI application.
+// It initializes and parses any command-line flags or arguments,
+// and attempts to execute the specified command. If an error occurs
+// during execution, Execute exits the application with a non-zero status code.
+//
+// This function should be called from the main package to start the CLI tool.
+// It utilizes the Cobra library for command-line parsing, and loads
+// configuration settings from a specified file path before executing commands.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {

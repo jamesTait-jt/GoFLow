@@ -9,7 +9,7 @@ import (
 // Handler processes task payloads
 type Handler func(payload any) Result
 
-// Type represents a generic task structure
+// Task represents a generic task structure
 type Task struct {
 	ID      string
 	Type    string
