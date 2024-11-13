@@ -4,7 +4,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -81,35 +80,51 @@ func Test_GoFlowServiceController_PushTask(t *testing.T) {
 
 func Test_GoFlowServiceController_GetResult(t *testing.T) {
 	t.Run("Logs the request, gets the result from GoFlow and returns the result", func(t *testing.T) {
-		// Arrange
-		svc := new(mockGoFlowService)
-		logger := new(log.TestifyMock)
-
-		controller := NewGoFlowServiceController(svc, logger)
-
-		ctx := context.Background()
-		req := &pb.GetResultRequest{
-			TaskID: "task-id",
+		type successTest struct {
+			name               string
+			inGoFlowResult     task.Result
+			wantGetResultReply *pb.GetResultReply
 		}
 
-		shouldLog := "Received get result: [task-id]"
-		logger.On("Info", shouldLog).Once()
+		type s struct {
+			N   int
+			Str string
+		}
 
-		result := task.Result{}
-		svc.On("GetResult", req.TaskID).Once().Return(result, true, nil)
+		for _, tt := range []successTest{
+			{"string payload", task.Result{Payload: "payload"}, &pb.GetResultReply{Result: "payload"}},
+			{"int payload", task.Result{Payload: 10}, &pb.GetResultReply{Result: "10"}},
+			{"struct payload", task.Result{Payload: s{10, "foobar"}}, &pb.GetResultReply{Result: `{"N":10,"Str":"foobar"}`}},
+			{"error message payload", task.Result{ErrMsg: "ERROR: something failed"}, &pb.GetResultReply{ErrMsg: "ERROR: something failed"}},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				// Arrange
+				svc := new(mockGoFlowService)
+				logger := new(log.TestifyMock)
 
-		parsedResult, _ := json.Marshal(result)
-		expectedReply := &pb.GetResultReply{Result: string(parsedResult)}
+				controller := NewGoFlowServiceController(svc, logger)
 
-		// Act
-		resp, err := controller.GetResult(ctx, req)
+				ctx := context.Background()
+				req := &pb.GetResultRequest{
+					TaskID: "task-id",
+				}
 
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, expectedReply, resp)
+				shouldLog := "Received get result: [task-id]"
+				logger.On("Info", shouldLog).Once()
 
-		svc.AssertExpectations(t)
-		logger.AssertExpectations(t)
+				svc.On("GetResult", req.TaskID).Once().Return(tt.inGoFlowResult, true, nil)
+
+				// Act
+				resp, err := controller.GetResult(ctx, req)
+
+				// Assert
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantGetResultReply, resp)
+
+				svc.AssertExpectations(t)
+				logger.AssertExpectations(t)
+			})
+		}
 	})
 
 	t.Run("Returns an error if GetResult returns an error", func(t *testing.T) {
@@ -169,7 +184,7 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 		logger.AssertExpectations(t)
 	})
 
-	t.Run("Returns an error if marshaling the result fails", func(t *testing.T) {
+	t.Run("Returns an error if marshaling the result payload fails", func(t *testing.T) {
 		// Arrange
 		svc := new(mockGoFlowService)
 		logger := new(log.TestifyMock)
@@ -194,7 +209,7 @@ func Test_GoFlowServiceController_GetResult(t *testing.T) {
 
 		// Assert
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to marshal result")
+		assert.Contains(t, err.Error(), "failed to marshal result payload:")
 		assert.Nil(t, resp)
 
 		svc.AssertExpectations(t)

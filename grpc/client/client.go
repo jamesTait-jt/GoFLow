@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// TODO: Add functional options
 type GoFlowService struct {
 	client         pb.GoFlowClient
 	requestTimeout time.Duration
@@ -51,5 +52,10 @@ func (g *GoFlowService) Get(taskID string) (string, error) {
 		return "", fmt.Errorf("could not get result for taskID '%s': %w", taskID, err)
 	}
 
-	return r.GetResult(), nil
+	switch r.GetErrMsg() {
+	case "":
+		return r.GetResult(), nil
+	default:
+		return r.GetErrMsg(), nil
+	}
 }

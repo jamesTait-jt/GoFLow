@@ -24,4 +24,5 @@ message GetResultRequest {
 
 message GetResultReply {
   string result = 1;
+  string errMsg = 2;
 }

@@ -49,10 +49,28 @@ func (c *GoFlowServiceController) GetResult(_ context.Context, in *pb.GetResultR
 		return nil, fmt.Errorf("task not complete or didnt exist")
 	}
 
-	parsedResult, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result: %v", result)
+	if result.Payload == nil {
+		return &pb.GetResultReply{
+			ErrMsg: result.ErrMsg,
+		}, nil
 	}
 
-	return &pb.GetResultReply{Result: string(parsedResult)}, nil
+	var parsedPayload string
+
+	switch p := result.Payload.(type) {
+	case string:
+		parsedPayload = p
+	default:
+		marshalledPayload, err := json.Marshal(p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal result payload: %v", result)
+		}
+
+		parsedPayload = string(marshalledPayload)
+	}
+
+	return &pb.GetResultReply{
+		Result: parsedPayload,
+		ErrMsg: result.ErrMsg,
+	}, nil
 }

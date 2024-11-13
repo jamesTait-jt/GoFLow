@@ -25,18 +25,14 @@ func TestWorkerpool_Integration(t *testing.T) {
 
 	redisContainer, err := startRedisContainer(ctx)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		testcontainers.CleanupContainer(t, redisContainer)
-	})
+	defer testcontainers.CleanupContainer(t, redisContainer)
 
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
 
 	client, err := connectToRedisContainer(ctx, endpoint)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		client.Close()
-	})
+	defer client.Close()
 
 	taskSerialiser := serialise.NewGobSerialiser[task.Task]()
 	resultSerialiser := serialise.NewGobSerialiser[task.Result]()
