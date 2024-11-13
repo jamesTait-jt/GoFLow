@@ -4,41 +4,47 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"google.golang.org/grpc"
 )
 
 type GoFlowGRPCServer struct {
+	opts       goFlowGRPCServerOptions
 	grpcServer *grpc.Server
-	logger     log.Logger
 }
 
-func New(logger log.Logger) *GoFlowGRPCServer {
+// TODO: Expand this to provide access to set gRPC options
+func New(opt ...GoFlowServerOption) *GoFlowGRPCServer {
+	opts := defaultServerOptions
+
+	for _, o := range opt {
+		o.apply(&opts)
+	}
+
 	s := grpc.NewServer()
 
 	return &GoFlowGRPCServer{
 		grpcServer: s,
-		logger:     logger,
+		opts:       opts,
 	}
 }
 
 func (g GoFlowGRPCServer) Start(serviceRegister func(server *grpc.Server)) {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 50051))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", g.opts.port))
 	if err != nil {
-		g.logger.Fatal(fmt.Sprintf("failed to start gRPC server: %v", err))
+		g.opts.logger.Fatal(fmt.Sprintf("failed to start gRPC server: %v", err))
 	}
 
 	serviceRegister(g.grpcServer)
 
-	g.logger.Info(fmt.Sprintf("server listening at %v", lis.Addr()))
+	g.opts.logger.Info(fmt.Sprintf("server listening at %v", lis.Addr()))
 
 	if err := g.grpcServer.Serve(lis); err != nil {
-		g.logger.Fatal(fmt.Sprintf("failed to serve gRPC server: %v", err))
+		g.opts.logger.Fatal(fmt.Sprintf("failed to serve gRPC server: %v", err))
 	}
 }
 
 func (g GoFlowGRPCServer) Close() error {
-	g.logger.Info("closing gRPC server")
+	g.opts.logger.Info("closing gRPC server")
 
 	g.grpcServer.GracefulStop()
 

@@ -56,7 +56,7 @@ func (r *Runtime) Run(ctx context.Context) error {
 	gfService := server.NewGoFlowService(gf)
 	controller := server.NewGoFlowServiceController(gfService, logger)
 
-	grpcServer := server.New(logger)
+	grpcServer := server.New()
 
 	go grpcServer.Start(
 		func(server *grpc.Server) {
