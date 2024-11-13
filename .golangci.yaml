@@ -23,6 +23,10 @@ linters-settings:
   nolintlint:
     require-explanation: true
     require-specific: true
+  revive:
+    rules:
+      - name: exported
+
 linters:
   disable-all: true
   enable:
@@ -63,6 +67,7 @@ issues:
       linters:
         - goconst
         - dupl
+  exclude-use-default: false
 
 run:
   issues-exit-code: 1
