@@ -20,4 +20,6 @@ go get github.com/jamesTait-jt/goflow
 
 ### Configuration
 
+copy your handlers into minikube
+
 ### Usage

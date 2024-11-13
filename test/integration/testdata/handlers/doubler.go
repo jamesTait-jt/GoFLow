@@ -1,13 +1,33 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/jamesTait-jt/goflow/task"
 )
 
-func handle(payload any) task.Result {
-	n := payload.(int)
+type input struct {
+	N int
+}
 
-	return task.Result{Payload: n * 2}
+func handle(payload any) task.Result {
+	instr, ok := payload.(string)
+	if !ok {
+		return task.Result{
+			ErrMsg: fmt.Sprintf("wrong input type: %t", payload),
+		}
+	}
+
+	var in input
+	err := json.Unmarshal([]byte(instr), &in)
+	if err != nil {
+		return task.Result{
+			ErrMsg: fmt.Sprintf("badly formed input [%v]: %v", instr, err),
+		}
+	}
+
+	return task.Result{Payload: in.N * 2}
 }
 
 func NewHandler() task.Handler {

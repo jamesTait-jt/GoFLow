@@ -58,7 +58,7 @@ func TestWorkerpool_Integration(t *testing.T) {
 
 	t.Run("Reads from tasks queue and publishes result to results queue", func(t *testing.T) {
 		// Arrange
-		doubleMe := 10
+		doubleMe := `{"N":10}`
 		doubleTask := task.New("doubler", doubleMe)
 		serialisedDouble, err := taskSerialiser.Serialise(doubleTask)
 		require.NoError(t, err)
@@ -88,12 +88,11 @@ func TestWorkerpool_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		// Assert
-		assert.Equal(t, 2*doubleMe, doubleResult.Payload)
+		assert.Equal(t, 20, doubleResult.Payload)
 		assert.Equal(t, doubleTask.ID, doubleResult.TaskID)
 
 		assert.Equal(t, repeatMe, repeatResult.Payload)
 		assert.Equal(t, repeatTask.ID, repeatResult.TaskID)
-
 	})
 
 	t.Run("Handles plugins that return errors", func(t *testing.T) {
