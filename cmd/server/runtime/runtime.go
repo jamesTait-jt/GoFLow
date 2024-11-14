@@ -45,13 +45,11 @@ func (r *Runtime) Run(ctx context.Context) error {
 		redisClient,
 		"tasks",
 		serialise.NewGobSerialiser[task.Task](),
-		nil,
 		broker.WithLogger(logger),
 	)
 	resultsGetter := broker.NewRedisBroker(
 		redisClient,
 		"results",
-		nil,
 		serialise.NewGobSerialiser[task.Result](),
 		broker.WithLogger(logger),
 	)

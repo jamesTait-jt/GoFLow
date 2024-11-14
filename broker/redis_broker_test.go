@@ -22,16 +22,14 @@ func Test_NewRedisBroker(t *testing.T) {
 		// Arrange
 		client := new(mockRedisClient)
 		key := "queue"
-		serialiser := new(mockSerialiser[task.Task])
-		deserialiser := new(mockDeserialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 		logger := new(log.TestifyMock)
 
 		// Act
 		broker := NewRedisBroker(
 			client,
 			key,
-			serialiser,
-			deserialiser,
+			encoder,
 			WithLogger(logger),
 			WithPollTimeout(time.Second),
 		)
@@ -39,8 +37,7 @@ func Test_NewRedisBroker(t *testing.T) {
 		// Assert
 		assert.Equal(t, client, broker.client)
 		assert.Equal(t, key, broker.redisQueueKey)
-		assert.Equal(t, serialiser, broker.serialiser)
-		assert.Equal(t, deserialiser, broker.deserialiser)
+		assert.Equal(t, encoder, broker.encoder)
 		assert.NotNil(t, broker.outChan)
 		assert.NotNil(t, &broker.started)
 		assert.NotNil(t, broker.wg)
@@ -59,17 +56,12 @@ func Test_RedisBroker_Submit(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		serialiser := new(mockSerialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 
-		b := NewRedisBroker(
-			mockClient,
-			queueKey,
-			serialiser,
-			nil,
-		)
+		b := NewRedisBroker(mockClient, queueKey, encoder)
 
 		serialised := []byte{1, 2, 3, 4}
-		serialiser.On("Serialise", tsk).Return(serialised, nil)
+		encoder.On("Serialise", tsk).Return(serialised, nil)
 
 		returnedCmd := &redis.IntCmd{}
 		returnedCmd.SetErr(nil)
@@ -80,7 +72,7 @@ func Test_RedisBroker_Submit(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-		serialiser.AssertExpectations(t)
+		encoder.AssertExpectations(t)
 		mockClient.AssertExpectations(t)
 	})
 
@@ -94,24 +86,19 @@ func Test_RedisBroker_Submit(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		serialiser := new(mockSerialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 
-		b := NewRedisBroker(
-			mockClient,
-			queueKey,
-			serialiser,
-			nil,
-		)
+		b := NewRedisBroker(mockClient, queueKey, encoder)
 
 		serialiserError := errors.New("failed to serialise")
-		serialiser.On("Serialise", tsk).Return([]byte{}, serialiserError)
+		encoder.On("Serialise", tsk).Return([]byte{}, serialiserError)
 
 		// Act
 		err := b.Submit(ctx, tsk)
 
 		// Assert
 		assert.EqualError(t, err, serialiserError.Error())
-		serialiser.AssertExpectations(t)
+		encoder.AssertExpectations(t)
 		mockClient.AssertNotCalled(t, "LPush")
 	})
 
@@ -125,17 +112,12 @@ func Test_RedisBroker_Submit(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		serialiser := new(mockSerialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 
-		b := NewRedisBroker(
-			mockClient,
-			queueKey,
-			serialiser,
-			nil,
-		)
+		b := NewRedisBroker(mockClient, queueKey, encoder)
 
 		serialised := []byte{1, 2, 3, 4}
-		serialiser.On("Serialise", tsk).Return(serialised, nil)
+		encoder.On("Serialise", tsk).Return(serialised, nil)
 
 		lpushErr := errors.New("lpush error")
 		returnedCmd := &redis.IntCmd{}
@@ -147,7 +129,7 @@ func Test_RedisBroker_Submit(t *testing.T) {
 
 		// Assert
 		assert.EqualError(t, err, lpushErr.Error())
-		serialiser.AssertExpectations(t)
+		encoder.AssertExpectations(t)
 	})
 }
 
@@ -158,23 +140,17 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		deserialiser := new(mockDeserialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 		pollTimeout := time.Millisecond
 
-		br := NewRedisBroker(
-			mockClient,
-			queueKey,
-			nil,
-			deserialiser,
-			WithPollTimeout(pollTimeout),
-		)
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout))
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "returned val"})
 		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Return(returnedFromRedis)
 
 		deserialisedVal := task.Task{}
-		deserialiser.On("Deserialise", []byte(returnedFromRedis.Val()[1])).Once().Run(func(args mock.Arguments) {
+		encoder.On("Deserialise", []byte(returnedFromRedis.Val()[1])).Once().Run(func(args mock.Arguments) {
 			// Cancel so that there will only be one iteration of the polling loop
 			cancel()
 		}).Return(deserialisedVal, nil)
@@ -196,16 +172,10 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		deserialiser := new(mockDeserialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 		pollTimeout := time.Millisecond
 
-		br := NewRedisBroker(
-			mockClient,
-			queueKey,
-			nil,
-			deserialiser,
-			WithPollTimeout(pollTimeout),
-		)
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout))
 
 		returnedResult := &redis.StringSliceCmd{}
 		returnedResult.SetErr(redis.Nil)
@@ -236,18 +206,11 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		deserialiser := new(mockDeserialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 		pollTimeout := time.Millisecond
 		logger := new(log.TestifyMock)
 
-		br := NewRedisBroker(
-			mockClient,
-			queueKey,
-			nil,
-			deserialiser,
-			WithPollTimeout(pollTimeout),
-			WithLogger(logger),
-		)
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout), WithLogger(logger))
 
 		returnedResult := &redis.StringSliceCmd{}
 		returnedResult.SetErr(redis.ErrClosed)
@@ -281,24 +244,17 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
-		deserialiser := new(mockDeserialiser[task.Task])
+		encoder := new(mockEncoder[task.Task])
 		pollTimeout := time.Millisecond
 		logger := new(log.TestifyMock)
 
-		br := NewRedisBroker(
-			mockClient,
-			queueKey,
-			nil,
-			deserialiser,
-			WithPollTimeout(pollTimeout),
-			WithLogger(logger),
-		)
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout), WithLogger(logger))
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "faulty data"})
 		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Return(returnedFromRedis)
 
-		deserialiser.On("Deserialise", []byte("faulty data")).Once().Run(func(args mock.Arguments) {
+		encoder.On("Deserialise", []byte("faulty data")).Once().Run(func(args mock.Arguments) {
 			// Cancel so that there will only be one iteration of the polling loop
 			cancel()
 		}).Return(task.Task{}, fmt.Errorf("deserialisation error"))
@@ -319,7 +275,7 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 		}
 
 		mockClient.AssertExpectations(t)
-		deserialiser.AssertExpectations(t)
+		encoder.AssertExpectations(t)
 		logger.AssertExpectations(t)
 	})
 }
@@ -338,20 +294,16 @@ func (m *mockRedisClient) BRPop(ctx context.Context, timeout time.Duration, keys
 	return args.Get(0).(*redis.StringSliceCmd)
 }
 
-type mockSerialiser[T task.TaskOrResult] struct {
+type mockEncoder[T task.TaskOrResult] struct {
 	mock.Mock
 }
 
-func (m *mockSerialiser[T]) Serialise(toSerialise T) ([]byte, error) {
+func (m *mockEncoder[T]) Serialise(toSerialise T) ([]byte, error) {
 	args := m.Called(toSerialise)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-type mockDeserialiser[T task.TaskOrResult] struct {
-	mock.Mock
-}
-
-func (m *mockDeserialiser[T]) Deserialise(toDeserialise []byte) (T, error) {
+func (m *mockEncoder[T]) Deserialise(toDeserialise []byte) (T, error) {
 	args := m.Called(toDeserialise)
 	return args.Get(0).(T), args.Error(1)
 }

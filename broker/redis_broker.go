@@ -15,11 +15,8 @@ type redisClient interface {
 	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd
 }
 
-type Serialiser[T task.TaskOrResult] interface {
+type Encoder[T task.TaskOrResult] interface {
 	Serialise(toSerialise T) ([]byte, error)
-}
-
-type Deserialiser[T task.TaskOrResult] interface {
 	Deserialise(toDeserialise []byte) (T, error)
 }
 
@@ -29,16 +26,14 @@ type RedisBroker[T task.TaskOrResult] struct {
 	outChan       chan T
 	started       sync.Once
 	wg            *sync.WaitGroup
-	serialiser    Serialiser[T]
-	deserialiser  Deserialiser[T]
+	encoder       Encoder[T]
 	opts          redisBrokerOptions
 }
 
 func NewRedisBroker[T task.TaskOrResult](
 	client redisClient,
 	key string,
-	serialiser Serialiser[T],
-	deserialiser Deserialiser[T],
+	encoder Encoder[T],
 	opt ...RedisBrokerOption,
 ) *RedisBroker[T] {
 	opts := defaultRedisBrokerOptions()
@@ -50,8 +45,7 @@ func NewRedisBroker[T task.TaskOrResult](
 	return &RedisBroker[T]{
 		client:        client,
 		redisQueueKey: key,
-		serialiser:    serialiser,
-		deserialiser:  deserialiser,
+		encoder:       encoder,
 		opts:          opts,
 		outChan:       make(chan T),
 		wg:            &sync.WaitGroup{},
@@ -59,7 +53,7 @@ func NewRedisBroker[T task.TaskOrResult](
 }
 
 func (rb *RedisBroker[T]) Submit(ctx context.Context, submission T) error {
-	serialised, err := rb.serialiser.Serialise(submission)
+	serialised, err := rb.encoder.Serialise(submission)
 	if err != nil {
 		return err
 	}
@@ -102,7 +96,7 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 				continue
 			}
 
-			result, err := rb.deserialiser.Deserialise([]byte(redisResult[1]))
+			result, err := rb.encoder.Deserialise([]byte(redisResult[1]))
 			if err != nil {
 				rb.opts.logger.Warn(fmt.Sprintf("Failed to deserialize task: %v", err))
 

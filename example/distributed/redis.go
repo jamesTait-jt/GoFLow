@@ -29,8 +29,8 @@ func main() {
 	logger := log.NewConsoleLogger()
 
 	gf := goflow.New(
-		broker.NewRedisBroker(redisClient, "tasks", taskSerialiser, nil, broker.WithLogger(logger)),
-		broker.NewRedisBroker(redisClient, "results", nil, resultSerialiser, broker.WithLogger(logger)),
+		broker.NewRedisBroker(redisClient, "tasks", taskSerialiser, broker.WithLogger(logger)),
+		broker.NewRedisBroker(redisClient, "results", resultSerialiser, broker.WithLogger(logger)),
 		goflow.WithResultsStore(resultsStore),
 	)
 

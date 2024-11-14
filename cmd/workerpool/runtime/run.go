@@ -42,7 +42,7 @@ func (r *Runtime) Run() error {
 
 	resultSerialiser := serialise.NewGobSerialiser[task.Result]()
 	taskSerialiser := serialise.NewGobSerialiser[task.Task]()
-	serviceFactory := service.NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers, logger)
+	serviceFactory := service.NewFactory(pool, taskSerialiser, resultSerialiser, taskHandlers, logger)
 
 	var workerpoolService *service.WorkerpoolService
 

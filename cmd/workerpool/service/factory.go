@@ -9,32 +9,32 @@ import (
 )
 
 type Factory struct {
-	pool         workerpoolRunner
-	serialiser   broker.Serialiser[task.Result]
-	deserialiser broker.Deserialiser[task.Task]
-	taskHandlers workerpool.HandlerGetter
-	logger       log.Logger
+	pool          workerpoolRunner
+	taskEncoder   broker.Encoder[task.Task]
+	resultEncoder broker.Encoder[task.Result]
+	taskHandlers  workerpool.HandlerGetter
+	logger        log.Logger
 }
 
 func NewFactory(
 	pool workerpoolRunner,
-	serialiser broker.Serialiser[task.Result],
-	deserialiser broker.Deserialiser[task.Task],
+	taskEncoder broker.Encoder[task.Task],
+	resultEncoder broker.Encoder[task.Result],
 	taskHandlers workerpool.HandlerGetter,
 	logger log.Logger,
 ) *Factory {
 	return &Factory{
-		pool:         pool,
-		serialiser:   serialiser,
-		deserialiser: deserialiser,
-		taskHandlers: taskHandlers,
-		logger:       logger,
+		pool:          pool,
+		taskEncoder:   taskEncoder,
+		resultEncoder: resultEncoder,
+		taskHandlers:  taskHandlers,
+		logger:        logger,
 	}
 }
 
 func (f *Factory) CreateRedisWorkerpoolService(client *redis.Client) *WorkerpoolService {
-	taskQueue := broker.NewRedisBroker(client, "tasks", nil, f.deserialiser, broker.WithLogger(f.logger))
-	resultQueue := broker.NewRedisBroker(client, "results", f.serialiser, nil, broker.WithLogger(f.logger))
+	taskQueue := broker.NewRedisBroker(client, "tasks", f.taskEncoder, broker.WithLogger(f.logger))
+	resultQueue := broker.NewRedisBroker(client, "results", f.resultEncoder, broker.WithLogger(f.logger))
 
 	return NewWorkerpoolService(f.pool, taskQueue, resultQueue, f.taskHandlers)
 }

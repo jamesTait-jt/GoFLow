@@ -24,7 +24,7 @@ func Test_WorkerpoolFactory_NewRedisWorkerpoolService(t *testing.T) {
 
 		client := &redis.Client{}
 
-		f := NewFactory(pool, resultSerialiser, taskSerialiser, taskHandlers, logger)
+		f := NewFactory(pool, taskSerialiser, resultSerialiser, taskHandlers, logger)
 
 		// Act
 		service := f.CreateRedisWorkerpoolService(client)
