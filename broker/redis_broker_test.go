@@ -136,7 +136,7 @@ func Test_RedisBroker_Submit(t *testing.T) {
 func Test_RedisBroker_Dequeue(t *testing.T) {
 	t.Run("Polls redis and returns a channel for listening", func(t *testing.T) {
 		// Arrange
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
@@ -147,13 +147,14 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "returned val"})
-		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Return(returnedFromRedis)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(returnedFromRedis)
 
 		deserialisedVal := task.Task{}
-		encoder.On("Deserialise", []byte(returnedFromRedis.Val()[1])).Once().Run(func(args mock.Arguments) {
-			// Cancel so that there will only be one iteration of the polling loop
-			cancel()
-		}).Return(deserialisedVal, nil)
+		encoder.On("Deserialise", []byte(returnedFromRedis.Val()[1])).Once().Return(deserialisedVal, nil)
+
+		errReturnedFromRedis := &redis.StringSliceCmd{}
+		errReturnedFromRedis.SetErr(context.Canceled)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(errReturnedFromRedis)
 
 		// Act
 		c := br.Dequeue(ctx)
@@ -166,43 +167,9 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 
-	t.Run("Handles Redis timeout (redis.Nil) and continues polling", func(t *testing.T) {
-		// Arrange
-		ctx, cancel := context.WithCancel(context.Background())
-
-		mockClient := new(mockRedisClient)
-		queueKey := "queue"
-		encoder := new(mockEncoder[task.Task])
-		pollTimeout := time.Millisecond
-
-		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout))
-
-		returnedResult := &redis.StringSliceCmd{}
-		returnedResult.SetErr(redis.Nil)
-		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Run(func(args mock.Arguments) {
-			// Cancel so that there will only be one iteration of the polling loop
-			cancel()
-		}).Return(returnedResult)
-
-		// Act
-		br.Dequeue(ctx)
-
-		// Assert
-		br.wg.Wait()
-
-		select {
-		case <-br.outChan:
-			t.Error("Expected no value in outChan")
-		default:
-			// Test passes, as no task should be available
-		}
-
-		mockClient.AssertExpectations(t)
-	})
-
 	t.Run("Logs Redis error and continues polling", func(t *testing.T) {
 		// Arrange
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
@@ -214,12 +181,13 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		returnedResult := &redis.StringSliceCmd{}
 		returnedResult.SetErr(redis.ErrClosed)
-		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Run(func(args mock.Arguments) {
-			// Cancel so that there will only be one iteration of the polling loop
-			cancel()
-		}).Return(returnedResult)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(returnedResult)
 
-		logger.On("Warn", "BRPop error: redis: client is closed").Once()
+		logger.On("Warn", "redis: client is closed").Once()
+
+		errReturnedFromRedis := &redis.StringSliceCmd{}
+		errReturnedFromRedis.SetErr(context.Canceled)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(errReturnedFromRedis)
 
 		// Act
 		br.Dequeue(ctx)
@@ -252,14 +220,18 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "faulty data"})
-		mockClient.On("BRPop", ctx, pollTimeout, []string{queueKey}).Once().Return(returnedFromRedis)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(returnedFromRedis)
 
 		encoder.On("Deserialise", []byte("faulty data")).Once().Run(func(args mock.Arguments) {
 			// Cancel so that there will only be one iteration of the polling loop
 			cancel()
 		}).Return(task.Task{}, fmt.Errorf("deserialisation error"))
 
-		logger.On("Warn", "Failed to deserialize task: deserialisation error").Once()
+		logger.On("Warn", "deserialisation error").Once()
+
+		errReturnedFromRedis := &redis.StringSliceCmd{}
+		errReturnedFromRedis.SetErr(context.Canceled)
+		mockClient.On("BRPop", ctx, time.Duration(0), []string{queueKey}).Once().Return(errReturnedFromRedis)
 
 		// Act
 		br.Dequeue(ctx)

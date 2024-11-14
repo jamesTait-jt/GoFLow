@@ -2,7 +2,7 @@ package broker
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -79,32 +79,25 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 	defer rb.wg.Done()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		default:
-			redisResult, err := rb.client.BRPop(ctx, rb.opts.pollTimeout, rb.redisQueueKey).Result()
-			if err != nil {
-				if err == redis.Nil {
-					// BRPop timed out
-					continue
-				}
-
-				rb.opts.logger.Warn(fmt.Sprintf("BRPop error: %v", err.Error()))
-
-				continue
+		redisResult, err := rb.client.BRPop(ctx, 0, rb.redisQueueKey).Result()
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
 			}
 
-			result, err := rb.encoder.Deserialise([]byte(redisResult[1]))
-			if err != nil {
-				rb.opts.logger.Warn(fmt.Sprintf("Failed to deserialize task: %v", err))
+			rb.opts.logger.Warn(err.Error())
 
-				continue
-			}
-
-			rb.outChan <- result
+			continue
 		}
+
+		result, err := rb.encoder.Deserialise([]byte(redisResult[1]))
+		if err != nil {
+			rb.opts.logger.Warn(err.Error())
+
+			continue
+		}
+
+		rb.outChan <- result
 	}
 }
 
