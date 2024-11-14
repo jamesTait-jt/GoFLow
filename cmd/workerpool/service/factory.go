@@ -33,8 +33,8 @@ func NewFactory(
 }
 
 func (f *Factory) CreateRedisWorkerpoolService(client *redis.Client) *WorkerpoolService {
-	taskQueue := broker.NewRedisBroker(client, "tasks", nil, f.deserialiser, f.logger)
-	resultQueue := broker.NewRedisBroker(client, "results", f.serialiser, nil, f.logger)
+	taskQueue := broker.NewRedisBroker(client, "tasks", nil, f.deserialiser, broker.WithLogger(f.logger))
+	resultQueue := broker.NewRedisBroker(client, "results", f.serialiser, nil, broker.WithLogger(f.logger))
 
 	return NewWorkerpoolService(f.pool, taskQueue, resultQueue, f.taskHandlers)
 }

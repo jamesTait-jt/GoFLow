@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/jamesTait-jt/goflow/task"
 	"github.com/redis/go-redis/v9"
 )
@@ -29,11 +28,10 @@ type RedisBroker[T task.TaskOrResult] struct {
 	redisQueueKey string
 	outChan       chan T
 	started       sync.Once
+	wg            *sync.WaitGroup
 	serialiser    Serialiser[T]
 	deserialiser  Deserialiser[T]
-	wg            *sync.WaitGroup
-	pollDelay     time.Duration
-	logger        log.Logger
+	opts          redisBrokerOptions
 }
 
 func NewRedisBroker[T task.TaskOrResult](
@@ -41,17 +39,22 @@ func NewRedisBroker[T task.TaskOrResult](
 	key string,
 	serialiser Serialiser[T],
 	deserialiser Deserialiser[T],
-	logger log.Logger,
+	opt ...RedisBrokerOption,
 ) *RedisBroker[T] {
+	opts := defaultRedisBrokerOptions()
+
+	for _, o := range opt {
+		o.apply(&opts)
+	}
+
 	return &RedisBroker[T]{
 		client:        client,
 		redisQueueKey: key,
 		serialiser:    serialiser,
 		deserialiser:  deserialiser,
+		opts:          opts,
 		outChan:       make(chan T),
 		wg:            &sync.WaitGroup{},
-		pollDelay:     time.Second,
-		logger:        logger,
 	}
 }
 
@@ -87,21 +90,21 @@ func (rb *RedisBroker[T]) pollRedis(ctx context.Context) {
 			return
 
 		default:
-			redisResult, err := rb.client.BRPop(ctx, rb.pollDelay, rb.redisQueueKey).Result()
+			redisResult, err := rb.client.BRPop(ctx, rb.opts.pollTimeout, rb.redisQueueKey).Result()
 			if err != nil {
 				if err == redis.Nil {
 					// BRPop timed out
 					continue
 				}
 
-				rb.logger.Warn(fmt.Sprintf("BRPop error: %v", err.Error()))
+				rb.opts.logger.Warn(fmt.Sprintf("BRPop error: %v", err.Error()))
 
 				continue
 			}
 
 			result, err := rb.deserialiser.Deserialise([]byte(redisResult[1]))
 			if err != nil {
-				rb.logger.Warn(fmt.Sprintf("Failed to deserialize task: %v", err))
+				rb.opts.logger.Warn(fmt.Sprintf("Failed to deserialize task: %v", err))
 
 				continue
 			}
