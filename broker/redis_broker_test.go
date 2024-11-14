@@ -31,7 +31,6 @@ func Test_NewRedisBroker(t *testing.T) {
 			key,
 			encoder,
 			WithLogger(logger),
-			WithPollTimeout(time.Second),
 		)
 
 		// Assert
@@ -41,7 +40,6 @@ func Test_NewRedisBroker(t *testing.T) {
 		assert.NotNil(t, broker.outChan)
 		assert.NotNil(t, &broker.started)
 		assert.NotNil(t, broker.wg)
-		assert.Equal(t, time.Second, broker.opts.pollTimeout)
 	})
 }
 
@@ -141,9 +139,8 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
 		encoder := new(mockEncoder[task.Task])
-		pollTimeout := time.Millisecond
 
-		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout))
+		br := NewRedisBroker(mockClient, queueKey, encoder)
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "returned val"})
@@ -174,10 +171,9 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
 		encoder := new(mockEncoder[task.Task])
-		pollTimeout := time.Millisecond
 		logger := new(log.TestifyMock)
 
-		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout), WithLogger(logger))
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithLogger(logger))
 
 		returnedResult := &redis.StringSliceCmd{}
 		returnedResult.SetErr(redis.ErrClosed)
@@ -213,10 +209,9 @@ func Test_RedisBroker_Dequeue(t *testing.T) {
 		mockClient := new(mockRedisClient)
 		queueKey := "queue"
 		encoder := new(mockEncoder[task.Task])
-		pollTimeout := time.Millisecond
 		logger := new(log.TestifyMock)
 
-		br := NewRedisBroker(mockClient, queueKey, encoder, WithPollTimeout(pollTimeout), WithLogger(logger))
+		br := NewRedisBroker(mockClient, queueKey, encoder, WithLogger(logger))
 
 		returnedFromRedis := &redis.StringSliceCmd{}
 		returnedFromRedis.SetVal([]string{"", "faulty data"})
