@@ -1,3 +1,6 @@
+// Package client provides a gRPC client for interfacing with a GoFlow server.
+// It enables pushing tasks to the server and retrieving task results through
+// gRPC method calls, encapsulated within GoFlowGRPCClient.
 package client
 
 import (
@@ -9,11 +12,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// GoFlowGRPCClient is a client for interacting with the GoFlow gRPC server.
+// It provides methods to push tasks to the server and retrieve results.
+// GoFlowGRPCClient manages connection and configuration details through options.
 type GoFlowGRPCClient struct {
 	opts   goFlowGRPCClientOptions
 	client pb.GoFlowClient
 }
 
+// NewGoFlowClient creates a new GoFlowGRPCClient connected to the GoFlow gRPC server
+// specified by connString. Optional configuration can be provided to customize client settings.
 func NewGoFlowClient(connString string, opt ...GoFlowGRPCClientOption) (*GoFlowGRPCClient, error) {
 	opts := defaultServerOptions
 
@@ -32,6 +40,11 @@ func NewGoFlowClient(connString string, opt ...GoFlowGRPCClientOption) (*GoFlowG
 	}, nil
 }
 
+// Push submits a task to the GoFlow server. It takes a task type and payload
+// as strings, and returns the task's ID if successfully pushed, or an error otherwise.
+//
+// The Push method uses a context with a timeout defined in the client's options.
+// If the request fails, the returned error wraps the underlying gRPC error.
 func (g *GoFlowGRPCClient) Push(taskType, payload string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), g.opts.requestTimeout)
 	defer cancel()
@@ -44,6 +57,12 @@ func (g *GoFlowGRPCClient) Push(taskType, payload string) (string, error) {
 	return r.GetId(), nil
 }
 
+// Get retrieves the result of a task from the GoFlow server using the provided task ID.
+// If successful, Get returns the task result as a string. If the task encountered an error,
+// it returns the error message instead. Returns an error if the request fails.
+//
+// Get uses a context with a timeout from the client's options, and wraps errors
+// from the underlying gRPC call.
 func (g *GoFlowGRPCClient) Get(taskID string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), g.opts.requestTimeout)
 	defer cancel()
