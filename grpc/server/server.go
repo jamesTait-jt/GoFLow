@@ -19,6 +19,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+// GoFlowGRPCServer represents a gRPC server that handles GoFlow service requests.
+// It encapsulates the gRPC server instance and configuration options such as
+// the logger and port number. This struct provides methods to start and stop
+// the server as well as manage gRPC service registration.
+//
+// The server listens for incoming requests on the configured port and uses
+// the provided logger for reporting events during server operation.
 type GoFlowGRPCServer struct {
 	opts       goFlowGRPCServerOptions
 	grpcServer *grpc.Server
