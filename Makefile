@@ -1,8 +1,12 @@
 build-workerpool: tidy
 	docker build -t goflow-workerpool -f dockerfiles/Dockerfile.workerpool .
+	docker tag goflow-workerpool:latest jamestait12/goflow-workerpool:latest
+	docker push jamestait12/goflow-workerpool:latest
 
 build-pluginbuilder: tidy
 	docker build -t goflow-plugin-builder -f dockerfiles/Dockerfile.pluginbuilder .
+	docker tag goflow-plugin-builder:latest jamestait12/goflow-plugin-builder:latest
+	docker push jamestait12/goflow-plugin-builder:latest
 
 build-server: tidy
 	protoc --go_out=. --go_opt=paths=source_relative \
@@ -10,6 +14,8 @@ build-server: tidy
     	grpc/proto/goflow.proto
 
 	docker build -t goflow-server -f dockerfiles/Dockerfile.server .
+	docker tag goflow-server:latest jamestait12/goflow-server:latest
+	docker push jamestait12/goflow-server:latest
 
 build: build-server build-workerpool build-pluginbuilder
 
