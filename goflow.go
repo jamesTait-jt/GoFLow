@@ -109,7 +109,6 @@ func New(taskBroker Broker[task.Task], resultsBroker Broker[task.Result], opts .
 //
 // For detailed configuration options, see options.go.
 func NewLocalMode(
-	numWorkers, taskQueueSize, resultQueueSize int,
 	taskHandlers KVStore[string, task.Handler],
 	opts ...Option,
 ) *GoFlow {
@@ -124,10 +123,10 @@ func NewLocalMode(
 	gf := GoFlow{
 		ctx:             ctx,
 		cancel:          cancel,
-		workers:         workerpool.New(numWorkers),
-		taskBroker:      broker.NewChannelBroker[task.Task](taskQueueSize),
+		workers:         workerpool.New(options.numWorkers),
+		taskBroker:      broker.NewChannelBroker[task.Task](options.taskQueueBufferSize),
 		taskHandlers:    taskHandlers,
-		resultsBroker:   broker.NewChannelBroker[task.Result](resultQueueSize),
+		resultsBroker:   broker.NewChannelBroker[task.Result](options.resultQueueBufferSize),
 		results:         options.resultsStore,
 		resultsWriterWG: &sync.WaitGroup{},
 	}
@@ -184,7 +183,8 @@ func (gf *GoFlow) Close() error {
 }
 
 // RegisterHandler registers a task handler for the specified task type. It stores
-// the handler in the taskHandlers store for local mode execution.
+// the handler in the taskHandlers store for local mode execution. Handlers can be
+// dynamically registered while the goflow instance is running.
 //
 // If the GoFlow instance is not running in local mode (i.e., taskHandlers is nil),
 // a warning is logged, and the handler is not registered. In distributed mode,

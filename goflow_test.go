@@ -62,11 +62,10 @@ func Test_New(t *testing.T) {
 func Test_NewLocalMode(t *testing.T) {
 	t.Run("Initialises goflow with default options in local mode", func(t *testing.T) {
 		// Arrange
-		numWorkers, taskQueueSize, resultQueueSize := 10, 10, 10
 		taskHandlers := store.NewInMemoryKVStore[string, task.Handler]()
 
 		// Act
-		gf := NewLocalMode(numWorkers, taskQueueSize, resultQueueSize, taskHandlers)
+		gf := NewLocalMode(taskHandlers)
 
 		// Assert
 		assert.NotNil(t, gf)
@@ -89,9 +88,18 @@ func Test_NewLocalMode(t *testing.T) {
 		resultStore := store.NewInMemoryKVStore[string, task.Result]()
 
 		// Act
-		gf := NewLocalMode(0, 0, 0, nil, WithResultsStore(resultStore))
+		gf := NewLocalMode(
+			nil,
+			WithNumWorkers(10),
+			WithTaskQueueBufferSize(10),
+			WithResultQueueBufferSize(10),
+			WithResultsStore(resultStore),
+		)
 
 		// Assert
+		assert.IsType(t, &workerpool.Pool{}, gf.workers)
+		assert.IsType(t, &broker.ChannelBroker[task.Task]{}, gf.taskBroker)
+		assert.IsType(t, &broker.ChannelBroker[task.Result]{}, gf.resultsBroker)
 		assert.Equal(t, resultStore, gf.results)
 	})
 }

@@ -23,8 +23,10 @@ func main() {
 	taskHandlerStore := store.NewInMemoryKVStore[string, task.Handler]()
 
 	gf := goflow.NewLocalMode(
-		numWorkers, queueSize, queueSize,
 		taskHandlerStore,
+		goflow.WithNumWorkers(numWorkers),
+		goflow.WithTaskQueueBufferSize(queueSize),
+		goflow.WithResultQueueBufferSize(queueSize),
 		goflow.WithResultsStore(resultsStore),
 	)
 
