@@ -118,7 +118,7 @@ func TestDeployment(t *testing.T) {
 		initContainer := deployment.Spec.Template.Spec.InitContainers[0]
 		assert.Equal(t, pluginBuilderContainerName, *initContainer.Name)
 		assert.Equal(t, conf.Workerpool.PluginBuilderImage, *initContainer.Image)
-		assert.Equal(t, apiv1.PullNever, *initContainer.ImagePullPolicy)
+		assert.Equal(t, apiv1.PullIfNotPresent, *initContainer.ImagePullPolicy)
 		assert.Equal(t, []string{"/app/handlers"}, initContainer.Args)
 
 		assert.Len(t, initContainer.VolumeMounts, 1)
@@ -129,7 +129,7 @@ func TestDeployment(t *testing.T) {
 		workerpoolContainer := deployment.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, workerpoolContainerName, *workerpoolContainer.Name)
 		assert.Equal(t, conf.Workerpool.Image, *workerpoolContainer.Image)
-		assert.Equal(t, apiv1.PullNever, *workerpoolContainer.ImagePullPolicy)
+		assert.Equal(t, apiv1.PullIfNotPresent, *workerpoolContainer.ImagePullPolicy)
 		assert.Equal(t, []string{
 			"--broker-type", "redis",
 			"--broker-addr", fmt.Sprintf("%s:%d", redis.ServiceName, redis.RedisPort),

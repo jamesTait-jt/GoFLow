@@ -47,7 +47,7 @@ func Test_Deployment(t *testing.T) {
 		container := deploymentConfig.Spec.Template.Spec.Containers[0]
 		assert.Equal(t, deploymentContainerName, *container.Name)
 		assert.Equal(t, conf.GoFlowServer.Image, *container.Image)
-		assert.Equal(t, apiv1.PullNever, *container.ImagePullPolicy)
+		assert.Equal(t, apiv1.PullIfNotPresent, *container.ImagePullPolicy)
 
 		assert.Len(t, container.Ports, 1)
 		port := container.Ports[0]
