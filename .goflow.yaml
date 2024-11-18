@@ -1,12 +1,12 @@
 goflow_server:
-  image: "goflow-server:latest"
+  image: "jamestait12/goflow-server:latest"
   replicas: 1
   address: "127.0.0.1"
 workerpool:
-  image: "goflow-workerpool:latest"
+  image: "jamestait12/goflow-workerpool:latest"
   replicas: 5
   path_to_handlers: "/home/docker/handlers"
-  plugin_builder_image: "goflow-plugin-builder:latest"
+  plugin_builder_image: "jamestait12/goflow-plugin-builder:latest"
 redis:
   image: "redis:latest"
   replicas: 1

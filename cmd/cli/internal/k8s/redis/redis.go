@@ -36,6 +36,7 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 									acapiv1.Container().
 										WithName(deploymentContainerName).
 										WithImage(conf.Redis.Image).
+										WithImagePullPolicy(apiv1.PullIfNotPresent).
 										WithPorts(
 											acapiv1.ContainerPort().
 												WithProtocol(apiv1.ProtocolTCP).

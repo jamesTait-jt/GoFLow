@@ -63,14 +63,14 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 	pluginBuilderContainer := acapiv1.Container().
 		WithName(pluginBuilderContainerName).
 		WithImage(conf.Workerpool.PluginBuilderImage).
-		WithImagePullPolicy(apiv1.PullNever).
+		WithImagePullPolicy(apiv1.PullIfNotPresent).
 		WithArgs("/app/handlers").
 		WithVolumeMounts(volumeMount)
 
 	workerpoolContainer := acapiv1.Container().
 		WithName(workerpoolContainerName).
 		WithImage(conf.Workerpool.Image).
-		WithImagePullPolicy(apiv1.PullNever).
+		WithImagePullPolicy(apiv1.PullIfNotPresent).
 		WithVolumeMounts(volumeMount).
 		WithArgs(
 			"--broker-type", "redis",

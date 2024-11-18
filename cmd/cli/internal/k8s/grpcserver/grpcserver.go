@@ -1,7 +1,10 @@
 package grpcserver
 
 import (
+	"fmt"
+
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/redis"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -36,7 +39,11 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 									acapiv1.Container().
 										WithName(deploymentContainerName).
 										WithImage(conf.GoFlowServer.Image).
-										WithImagePullPolicy(apiv1.PullNever).
+										WithImagePullPolicy(apiv1.PullIfNotPresent).
+										WithArgs(
+											"--broker-type", "redis",
+											"--broker-addr", fmt.Sprintf("%s:%d", redis.ServiceName, redis.RedisPort),
+										).
 										WithPorts(
 											acapiv1.ContainerPort().
 												WithProtocol(
