@@ -17,11 +17,11 @@ There are three ways to utilize GoFlow, catering to different levels of complexi
 3. **Distributed Mode (via gRPC client)**
     Deploy GoFlow on a Kubernetes cluster using the CLI. In this mode, you interact with GoFlow using a lightweight gRPC client, eliminating the need to include the full GoFlow library in your application.
 
-## Getting Started
+## User Guide
 
 ### Prerequisites
 
-- Golang (>=1.23)
+Go (>=1.21)
 
 ### Local Mode
 
@@ -102,9 +102,11 @@ if !ok {
 }
 ```
 
-#### Results store
+#### Task handler store & results store
 
-#### Task handler store
+You can define custom task handler registries and result stores by implementing the KVStore interface. For instance, you might want to persist task results in a database or a cloud service.
+
+Note that the task handler registry must reside in memory, as functions are not serialisable.
 
 ### Configuration
 
