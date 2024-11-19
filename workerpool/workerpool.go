@@ -3,9 +3,17 @@ package workerpool
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/jamesTait-jt/goflow/task"
+	"github.com/jamesTait-jt/goflow/workerpool/middleware"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	retry      = true
+	timeout    = time.Second
+	reportTime = true
 )
 
 type HandlerGetter interface {
@@ -70,6 +78,18 @@ func worker(
 				}).Error("No handler registered for task type")
 
 				continue
+			}
+
+			if retry {
+				handler = middleware.Retry(handler, 3)
+			}
+
+			if reportTime {
+				handler = middleware.ReportTime(handler)
+			}
+
+			if timeout > 0 {
+				handler = middleware.Timeout(handler, timeout)
 			}
 
 			result := handler(t.Payload)

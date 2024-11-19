@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,6 +15,13 @@ type Task struct {
 	ID      string
 	Type    string
 	Payload any
+	Opts    taskOption
+}
+
+type taskOption struct {
+	Retries     int
+	LogDuration bool
+	Timeout     time.Duration
 }
 
 type Result struct {
@@ -22,7 +30,11 @@ type Result struct {
 	ErrMsg  string
 }
 
-func New(taskType string, payload any) Task {
+type TaskOption interface {
+	apply(*taskOption)
+}
+
+func New(taskType string, payload any, opts ...TaskOption) Task {
 	id := uuid.New()
 	t := Task{
 		ID:      id.String(),
