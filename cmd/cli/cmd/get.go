@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/grpcserver"
 	"github.com/jamesTait-jt/goflow/grpc/client"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"
@@ -23,7 +22,7 @@ var getCmd = &cobra.Command{
 
 		logger := log.NewConsoleLogger()
 
-		serverAddr := fmt.Sprintf("%s:%d", conf.GoFlowServer.Address, grpcserver.GRPCPort)
+		serverAddr := fmt.Sprintf("%s:%d", conf.GoFlowServer.IP, conf.GoFlowServer.Port)
 		goFlowService, err := client.NewGoFlowClient(
 			serverAddr,
 			client.WithRequestTimeout(time.Minute),

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure"
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -45,14 +46,14 @@ func Test_Deployment(t *testing.T) {
 		assert.NotNil(t, deploymentConfig.Spec.Template.Spec)
 		assert.Len(t, deploymentConfig.Spec.Template.Spec.Containers, 1)
 		container := deploymentConfig.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, deploymentContainerName, *container.Name)
+		assert.Equal(t, infrastructure.GRPCServerContainerName, *container.Name)
 		assert.Equal(t, conf.GoFlowServer.Image, *container.Image)
 		assert.Equal(t, apiv1.PullIfNotPresent, *container.ImagePullPolicy)
 
 		assert.Len(t, container.Ports, 1)
 		port := container.Ports[0]
 		assert.Equal(t, apiv1.ProtocolTCP, *port.Protocol)
-		assert.Equal(t, GRPCPort, *port.ContainerPort)
+		assert.Equal(t, infrastructure.GRPCContainerPort, *port.ContainerPort)
 	})
 }
 
@@ -64,7 +65,8 @@ func Test_Service(t *testing.T) {
 				Namespace: "test-namespace",
 			},
 			GoFlowServer: config.GoFlowServer{
-				Address: "1.2.3.4",
+				IP:   "1.2.3.4",
+				Port: 5678,
 			},
 		}
 
@@ -80,11 +82,11 @@ func Test_Service(t *testing.T) {
 		assert.NotNil(t, serviceConfig.Spec)
 		assert.Equal(t, labels, serviceConfig.Spec.Selector)
 		assert.Equal(t, apiv1.ServiceTypeLoadBalancer, *serviceConfig.Spec.Type)
-		assert.Equal(t, conf.GoFlowServer.Address, *serviceConfig.Spec.LoadBalancerIP)
+		assert.Equal(t, conf.GoFlowServer.IP, *serviceConfig.Spec.LoadBalancerIP)
 
 		assert.Len(t, serviceConfig.Spec.Ports, 1)
 		port := serviceConfig.Spec.Ports[0]
-		assert.Equal(t, GRPCPort, *port.Port)
-		assert.Equal(t, intstr.FromInt32(GRPCPort), *port.TargetPort)
+		assert.Equal(t, conf.GoFlowServer.Port, *port.Port)
+		assert.Equal(t, intstr.FromInt32(infrastructure.GRPCContainerPort), *port.TargetPort)
 	})
 }

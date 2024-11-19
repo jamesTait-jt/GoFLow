@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure"
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/redis"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -13,10 +14,8 @@ import (
 )
 
 var (
-	deploymentName                = "goflow-grpc-deployment"
-	deploymentContainerName       = "goflow-grpc-deployment-container"
-	serviceName                   = "goflow-grpc-service"
-	GRPCPort                int32 = 50051
+	deploymentName = "goflow-grpc-deployment"
+	serviceName    = "goflow-grpc-service"
 
 	labels = map[string]string{
 		"app": "goflow-grpc-server",
@@ -37,7 +36,7 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 							acapiv1.PodSpec().
 								WithContainers(
 									acapiv1.Container().
-										WithName(deploymentContainerName).
+										WithName(infrastructure.GRPCServerContainerName).
 										WithImage(conf.GoFlowServer.Image).
 										WithImagePullPolicy(apiv1.PullIfNotPresent).
 										WithArgs(
@@ -46,11 +45,8 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 										).
 										WithPorts(
 											acapiv1.ContainerPort().
-												WithProtocol(
-													apiv1.ProtocolTCP,
-												).WithContainerPort(
-												GRPCPort,
-											),
+												WithProtocol(apiv1.ProtocolTCP).
+												WithContainerPort(infrastructure.GRPCContainerPort),
 										),
 								),
 						),
@@ -65,11 +61,11 @@ func Service(conf *config.Config) *acapiv1.ServiceApplyConfiguration {
 			acapiv1.ServiceSpec().
 				WithSelector(labels).
 				WithType(apiv1.ServiceTypeLoadBalancer).
-				WithLoadBalancerIP(conf.GoFlowServer.Address).
+				WithLoadBalancerIP(conf.GoFlowServer.IP).
 				WithPorts(
 					acapiv1.ServicePort().
-						WithPort(GRPCPort).
-						WithTargetPort(intstr.FromInt32(GRPCPort)),
+						WithPort(conf.GoFlowServer.Port).
+						WithTargetPort(intstr.FromInt32(infrastructure.GRPCContainerPort)),
 				),
 		)
 }

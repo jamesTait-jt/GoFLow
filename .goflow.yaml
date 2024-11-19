@@ -2,6 +2,7 @@ goflow_server:
   image: "jamestait12/goflow-server:latest"
   replicas: 1
   address: "127.0.0.1"
+  port: 50051
 workerpool:
   image: "jamestait12/goflow-workerpool:latest"
   replicas: 5

@@ -23,7 +23,8 @@ type Config struct {
 type GoFlowServer struct {
 	Image    string `yaml:"image"`
 	Replicas int32  `yaml:"replicas"`
-	Address  string `yaml:"address"`
+	IP       string `yaml:"address"`
+	Port     int32  `yaml:"port"`
 }
 
 type Workerpool struct {
