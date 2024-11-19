@@ -2,6 +2,7 @@ package redis
 
 import (
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -10,10 +11,9 @@ import (
 )
 
 var (
-	deploymentName                = "goflow-redis-deployment"
-	deploymentContainerName       = "goflow-redis-deployment-container"
-	ServiceName                   = "goflow-redis-server"
-	RedisPort               int32 = 6379
+	deploymentName       = "goflow-redis-deployment"
+	ServiceName          = "goflow-redis-server"
+	RedisPort      int32 = 6379
 
 	labels = map[string]string{
 		"app": "goflow-redis",
@@ -34,7 +34,7 @@ func Deployment(conf *config.Config) *acappsv1.DeploymentApplyConfiguration {
 							acapiv1.PodSpec().
 								WithContainers(
 									acapiv1.Container().
-										WithName(deploymentContainerName).
+										WithName(infrastructure.RedisContainerName).
 										WithImage(conf.Redis.Image).
 										WithImagePullPolicy(apiv1.PullIfNotPresent).
 										WithPorts(

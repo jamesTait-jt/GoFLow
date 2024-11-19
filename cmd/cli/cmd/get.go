@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/grpcserver"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/grpcserver"
 	"github.com/jamesTait-jt/goflow/grpc/client"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/spf13/cobra"

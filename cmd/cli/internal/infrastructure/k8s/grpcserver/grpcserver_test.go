@@ -15,7 +15,7 @@ func Test_Deployment(t *testing.T) {
 	t.Run("Initialises the deployment correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 			GoFlowServer: config.GoFlowServer{
@@ -60,7 +60,7 @@ func Test_Service(t *testing.T) {
 	t.Run("Initialises the service correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 			GoFlowServer: config.GoFlowServer{

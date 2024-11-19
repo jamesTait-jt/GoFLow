@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/redis"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/redis"
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,7 +20,7 @@ func TestHandlersPV(t *testing.T) {
 			Workerpool: config.Workerpool{
 				PathToHandlers: "/path/to/handlers",
 			},
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 		}
@@ -49,7 +49,7 @@ func TestHandlersPVC(t *testing.T) {
 	t.Run("Initialises the persistent volume claim correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 		}
@@ -78,7 +78,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("Initialises the deployment correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 			Workerpool: config.Workerpool{

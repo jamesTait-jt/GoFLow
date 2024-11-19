@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/resource"
 	"github.com/jamesTait-jt/goflow/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

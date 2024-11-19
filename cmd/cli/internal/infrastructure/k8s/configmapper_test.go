@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/grpcserver"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/redis"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/workerpool"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/grpcserver"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/redis"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/workerpool"
 	"github.com/stretchr/testify/assert"
 	acappsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	acapiv1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -32,8 +32,12 @@ func Test_NewConfigMapper(t *testing.T) {
 
 func Test_ConfigMapper_GetNamespaceConfig(t *testing.T) {
 	t.Run("Returns correct namespace config", func(t *testing.T) {
-		conf := new(config.Config)
 		// Arrange
+		conf := &config.Config{
+			Kubernetes: &config.Kubernetes{
+				Namespace: "namespace",
+			},
+		}
 		cm := &ConfigMapper{conf: conf}
 
 		expectedNamespace := acapiv1.Namespace(cm.conf.Kubernetes.Namespace)
@@ -67,7 +71,11 @@ func Test_ConfigMapper_GetDeploymentConfig(t *testing.T) {
 			wantApplyConfig *acappsv1.DeploymentApplyConfiguration
 		}
 
-		conf := new(config.Config)
+		conf := &config.Config{
+			Kubernetes: &config.Kubernetes{
+				Namespace: "namespace",
+			},
+		}
 
 		tts := []test{
 			{resource.GRPCServerDeployment, grpcserver.Deployment(conf)},
@@ -111,7 +119,11 @@ func Test_ConfigMapper_GetServiceConfig(t *testing.T) {
 			wantApplyConfig *acapiv1.ServiceApplyConfiguration
 		}
 
-		conf := new(config.Config)
+		conf := &config.Config{
+			Kubernetes: &config.Kubernetes{
+				Namespace: "namespace",
+			},
+		}
 
 		tts := []test{
 			{resource.GRPCServerService, grpcserver.Service(conf)},
@@ -179,8 +191,12 @@ func Test_ConfigMapper_GetPersistentVolumeConfig(t *testing.T) {
 
 func Test_ConfigMapper_GetPersistentVolumeClaimConfig(t *testing.T) {
 	t.Run("Returns correct pvc config", func(t *testing.T) {
-		conf := new(config.Config)
 		// Arrange
+		conf := &config.Config{
+			Kubernetes: &config.Kubernetes{
+				Namespace: "namespace",
+			},
+		}
 		cm := &ConfigMapper{conf: conf}
 
 		expectedPVC := workerpool.HandlersPVC(conf)
@@ -195,7 +211,11 @@ func Test_ConfigMapper_GetPersistentVolumeClaimConfig(t *testing.T) {
 
 	t.Run("Returns error if unrecognised key", func(t *testing.T) {
 		// Arrange
-		conf := new(config.Config)
+		conf := &config.Config{
+			Kubernetes: &config.Kubernetes{
+				Namespace: "namespace",
+			},
+		}
 		cm := &ConfigMapper{conf: conf}
 
 		// Act

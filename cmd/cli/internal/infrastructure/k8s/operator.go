@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/jamesTait-jt/goflow/cmd/cli/internal/k8s/resource"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure/k8s/resource"
 	"github.com/jamesTait-jt/goflow/pkg/slice"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

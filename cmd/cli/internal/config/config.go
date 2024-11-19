@@ -16,7 +16,8 @@ type Config struct {
 	GoFlowServer GoFlowServer `yaml:"goflow_server"`
 	Workerpool   Workerpool   `yaml:"workerpool"`
 	Redis        Redis        `yaml:"redis"`
-	Kubernetes   Kubernetes   `yaml:"kubernetes"`
+	Kubernetes   *Kubernetes  `yaml:"kubernetes"`
+	Docker       *Docker      `yaml:"docker"`
 }
 
 type GoFlowServer struct {
@@ -42,6 +43,10 @@ type Kubernetes struct {
 	ClusterURL string `yaml:"clusterUrl"`
 }
 
+type Docker struct {
+	NetworkID string `yaml:"network_id"`
+}
+
 func Load(filePath string) error {
 	yamlFile, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
@@ -51,12 +56,15 @@ func Load(filePath string) error {
 	var innerConfig Config
 
 	err = yaml.Unmarshal(yamlFile, &innerConfig)
-
-	config = &innerConfig
-
 	if err != nil {
 		return fmt.Errorf("error parsing .goflow.yaml: %v", err)
 	}
+
+	if err = ValidateDeploymentEnvironment(innerConfig); err != nil {
+		return err
+	}
+
+	config = &innerConfig
 
 	return nil
 }

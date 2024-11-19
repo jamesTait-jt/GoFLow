@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jamesTait-jt/goflow/cmd/cli/internal/config"
+	"github.com/jamesTait-jt/goflow/cmd/cli/internal/infrastructure"
 	"github.com/stretchr/testify/assert"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -15,7 +16,7 @@ func TestDeployment(t *testing.T) {
 	t.Run("Initialises the deployment correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 			Redis: config.Redis{
@@ -45,7 +46,7 @@ func TestDeployment(t *testing.T) {
 		assert.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 
 		container := deployment.Spec.Template.Spec.Containers[0]
-		assert.Equal(t, deploymentContainerName, *container.Name)
+		assert.Equal(t, infrastructure.RedisContainerName, *container.Name)
 		assert.Equal(t, conf.Redis.Image, *container.Image)
 
 		assert.Len(t, container.Ports, 1)
@@ -59,7 +60,7 @@ func TestService(t *testing.T) {
 	t.Run("Initialises the service correctly", func(t *testing.T) {
 		// Arrange
 		conf := &config.Config{
-			Kubernetes: config.Kubernetes{
+			Kubernetes: &config.Kubernetes{
 				Namespace: "test-namespace",
 			},
 		}
